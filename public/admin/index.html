@@ -257,7 +257,13 @@ function showAdmin(data) {
   updateStats();
 }
 
-/* ── UPLOAD ── */
+/* ── UPLOAD DIRECT NAVIGATEUR → CLOUDINARY ──
+   Flux :
+   1. Demander une signature au serveur (GET /api/admin/sign)
+   2. POST directement sur l'API Cloudinary avec la signature
+   3. Notifier le serveur pour qu'il enregistre les métadonnées
+   Avantage : aucun fichier ne transite par Render → 100 Mo max/photo
+── */
 document.getElementById('add-input').addEventListener('change', e => {
   uploadFiles(e.target.files); e.target.value = '';
 });
@@ -271,37 +277,89 @@ async function uploadFiles(files) {
   const count = document.getElementById('up-count');
   prog.classList.add('show');
 
-  const form = new FormData();
-  arr.forEach(f => form.append('photos', f));
+  let done = 0;
+  count.textContent = `0 / ${arr.length}`;
+  fill.style.width = '0%';
 
-  count.textContent = `0 / ${arr.length} photos`;
-  fill.style.width = '10%';
+  for (const file of arr) {
+    try {
+      count.textContent = `${done + 1} / ${arr.length} — ${file.name}`;
 
-  try {
-    // Simuler progression (pas de XHR progress avec fetch simple)
-    let p = 10;
-    const tick = setInterval(() => { p = Math.min(p + 5, 85); fill.style.width = p + '%'; }, 200);
+      // 1. Obtenir une signature fraîche du serveur
+      const sigRes = await fetch(`${API}/api/admin/sign`, { headers: authHeaders() });
+      if (!sigRes.ok) throw new Error('Signature refusée : ' + await sigRes.text());
+      const sig = await sigRes.json();
+      // sig = { timestamp, signature, folder, public_id, api_key, cloud_name }
 
-    const r = await fetch(`${API}/api/admin/photos`, {
-      method:  'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body:    form
-    });
+      // 2. Upload direct vers Cloudinary via XMLHttpRequest (pour la barre de progression)
+      await new Promise((resolve, reject) => {
+        const form = new FormData();
+        form.append('file',       file);
+        form.append('api_key',    sig.api_key);
+        form.append('timestamp',  sig.timestamp);
+        form.append('signature',  sig.signature);
+        form.append('folder',     sig.folder);
+        form.append('public_id',  sig.public_id);
 
-    clearInterval(tick);
-    fill.style.width = '100%';
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `https://api.cloudinary.com/v1_1/${sig.cloud_name}/image/upload`);
 
-    if (!r.ok) throw new Error(await r.text());
-    const { added } = await r.json();
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const fileProgress = (done / arr.length + (e.loaded / e.total) / arr.length) * 100;
+            fill.style.width = Math.round(fileProgress) + '%';
+          }
+        };
 
-    photos.push(...added);
-    renderGrid(); updateStats();
-    showSave(`${added.length} photo${added.length>1?'s':''} ajoutée${added.length>1?'s':''}`);
-  } catch(e) {
-    showToast('Erreur upload : ' + e.message);
-  } finally {
-    setTimeout(() => { prog.classList.remove('show'); fill.style.width='0'; }, 800);
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
+          else reject(new Error('Cloudinary error ' + xhr.status + ' : ' + xhr.responseText));
+        };
+        xhr.onerror = () => reject(new Error('Erreur réseau'));
+        xhr.send(form);
+      });
+
+      // 3. Enregistrer les métadonnées sur le serveur
+      // On relit les dimensions depuis l'image localement pour éviter un appel API
+      const dims = await getImageDimensions(file);
+      const regRes = await fetch(`${API}/api/admin/photos/register`, {
+        method:  'POST',
+        headers: authHeaders(),
+        body:    JSON.stringify({
+          cloudinaryId: sig.folder + '/' + sig.public_id,
+          originalName: file.name,
+          w:            dims.w,
+          h:            dims.h,
+        }),
+      });
+      if (!regRes.ok) throw new Error('Register error : ' + await regRes.text());
+      const photo = await regRes.json();
+
+      photos.push(photo);
+      renderGrid();
+      updateStats();
+      done++;
+      fill.style.width = Math.round((done / arr.length) * 100) + '%';
+
+    } catch(e) {
+      console.error('Upload error:', e);
+      showToast('Erreur : ' + e.message);
+    }
   }
+
+  showSave(`${done} photo${done > 1 ? 's' : ''} ajoutée${done > 1 ? 's' : ''}`);
+  setTimeout(() => { prog.classList.remove('show'); fill.style.width = '0'; }, 900);
+}
+
+// Lire les dimensions d'un fichier image localement (sans upload)
+function getImageDimensions(file) {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload  = () => { URL.revokeObjectURL(url); resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
+    img.onerror = () => { URL.revokeObjectURL(url); resolve({ w: 0, h: 0 }); };
+    img.src = url;
+  });
 }
 
 /* ── DRAG & DROP GLOBAL ── */
