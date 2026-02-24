@@ -64,7 +64,7 @@ async function readDB() {
       return data;
     }
   } catch(e) {
-    console.warn('Cloudinary DB fallback failed:', e.message);
+    console.warn('Cloudinary DB fallback failed:', String(e));
   }
 
   return [];
@@ -88,7 +88,7 @@ async function writeDB(data) {
     });
     fs.unlinkSync(tmp);
   } catch(e) {
-    console.warn('Cloudinary DB save failed:', e.message);
+    console.warn('Cloudinary DB save failed:', String(e));
   }
 }
 
@@ -212,37 +212,35 @@ app.get('/api/admin/photos', requireAuth, async (req, res) => {
 
 // ── POST /api/admin/photos  (upload → Cloudinary)
 app.post('/api/admin/photos', requireAuth, upload.array('photos', 50), async (req, res) => {
-  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier reçu' });
+  if (!req.files?.length) return res.status(400).json({ error: 'Aucun fichier recu' });
 
   const db    = await readDB();
   const added = [];
 
   for (const file of req.files) {
     try {
-      // Cloudinary renvoie les dimensions dans file
-      const w     = file.width  || file.resource?.width  || 0;
-      const h     = file.height || file.resource?.height || 0;
-      // Si Cloudinary ne renvoie pas les dimensions, les lire depuis l'objet
-      const fw    = w || (file.resource_type === 'image' ? parseInt(file.filename) : 0);
-      const fh    = h;
-      const ratio = fw && fh ? fw / fh : 1;
-      const orient = ratio > 1.15 ? 'land' : ratio < 0.87 ? 'port' : 'sq';
+      // multer-storage-cloudinary v4 expose :
+      //   file.filename  -> public_id (ex: atelier-portfolio/photos/abc123)
+      //   file.path      -> URL HTTPS complete
+      // Les dimensions ne sont PAS dans file -> API Cloudinary
+      const publicId = file.filename;
 
-      // Récupérer les vraies dimensions via l'API Cloudinary si manquantes
-      let finalW = fw, finalH = fh;
-      if (!finalW || !finalH) {
-        try {
-          const info = await cloudinary.api.resource(file.filename, { resource_type: 'image' });
-          finalW = info.width; finalH = info.height;
-        } catch(e) {}
+      let finalW = 0, finalH = 0;
+      try {
+        const info = await cloudinary.api.resource(publicId, { resource_type: 'image' });
+        finalW = info.width  || 0;
+        finalH = info.height || 0;
+      } catch(apiErr) {
+        console.error('Cloudinary api.resource error:', String(apiErr));
       }
+
       const finalRatio  = finalW && finalH ? finalW / finalH : 1;
       const finalOrient = finalRatio > 1.15 ? 'land' : finalRatio < 0.87 ? 'port' : 'sq';
 
       const photo = {
         id:           crypto.randomUUID(),
-        cloudinaryId: file.filename,       // public_id Cloudinary
-        name:         path.basename(file.originalname, path.extname(file.originalname)),
+        cloudinaryId: publicId,
+        name:         require('path').basename(file.originalname, require('path').extname(file.originalname)),
         w:            finalW,
         h:            finalH,
         ratio:        finalRatio,
@@ -254,19 +252,19 @@ app.post('/api/admin/photos', requireAuth, upload.array('photos', 50), async (re
 
       db.push(photo);
       added.push({
-        id:       photo.id,
-        url:      cldUrl(photo.cloudinaryId),
-        thumbUrl: cldUrl(photo.cloudinaryId, { width: 400, crop: 'limit' }),
-        name:     photo.name,
-        w:        photo.w,
-        h:        photo.h,
-        orient:   photo.orient,
-        ratio:    photo.ratio,
-        order:    photo.order,
+        id:        photo.id,
+        url:       cldUrl(photo.cloudinaryId),
+        thumbUrl:  cldUrl(photo.cloudinaryId, { width: 400, crop: 'limit' }),
+        name:      photo.name,
+        w:         photo.w,
+        h:         photo.h,
+        orient:    photo.orient,
+        ratio:     photo.ratio,
+        order:     photo.order,
         published: false,
       });
     } catch(e) {
-      console.error('Upload error:', e.message);
+      console.error('Upload error:', String(e));
     }
   }
 
@@ -293,7 +291,7 @@ app.delete('/api/admin/photos/:id', requireAuth, async (req, res) => {
 
   // Supprimer de Cloudinary
   try { await cloudinary.uploader.destroy(photo.cloudinaryId, { resource_type: 'image' }); }
-  catch(e) { console.warn('Cloudinary delete failed:', e.message); }
+  catch(e) { console.warn('Cloudinary delete failed:', String(e)); }
 
   db = db.filter(p => p.id !== req.params.id);
   db.forEach((p, i) => p.order = i);
