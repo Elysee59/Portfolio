@@ -195,6 +195,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
 /* ── CONFIG ── */
 const API = '';   // vide = même domaine, ou mettez https://votre-app.onrender.com
 
+// Cloudinary Free : limite pratique 10MB/image (évite l'erreur 500 côté UI)
+const MAX_MB = 10;
+const MAX_BYTES = MAX_MB * 1024 * 1024;
+
 /* ── TOKEN JWT ── */
 let token = localStorage.getItem('atelier-token') || null;
 
@@ -262,7 +266,7 @@ function showAdmin(data) {
    1. Demander une signature au serveur (GET /api/admin/sign)
    2. POST directement sur l'API Cloudinary avec la signature
    3. Notifier le serveur pour qu'il enregistre les métadonnées
-   Avantage : aucun fichier ne transite par Render → 100 Mo max/photo
+   Avantage : aucun fichier ne transite par Render
 ── */
 document.getElementById('add-input').addEventListener('change', e => {
   uploadFiles(e.target.files); e.target.value = '';
@@ -283,10 +287,16 @@ async function uploadFiles(files) {
 
   for (const file of arr) {
     try {
+      // Limite Cloudinary Free : 10MB (évite les erreurs "File size too large")
+      if (file.size > MAX_BYTES) {
+        showToast(`Image trop lourde : ${MAX_MB} MB max (Cloudinary Free).`);
+        continue;
+      }
+
       count.textContent = `${done + 1} / ${arr.length} — ${file.name}`;
 
       // 1. Obtenir une signature fraîche du serveur
-      const sigRes = await fetch(`${API}/api/admin/sign`, { headers: authHeaders() });
+      const sigRes = await fetch(`${API}/api/admin/sign`, { headers: authHeaders(), cache: 'no-store' });
       if (!sigRes.ok) throw new Error('Signature refusée : ' + await sigRes.text());
       const sig = await sigRes.json();
       // sig = { timestamp, signature, folder, public_id, api_key, cloud_name }
@@ -391,9 +401,13 @@ function renderGrid() {
     card.className = 'photo-card';
     card.draggable = true;
     card.dataset.id = photo.id;
+
+    // IMPORTANT : photo.url / photo.thumbUrl sont déjà des URLs Cloudinary complètes
+    const imgSrc = photo.thumbUrl || photo.url;
+
     card.innerHTML = `
       <div class="card-drag-handle"><span></span><span></span><span></span></div>
-      <div class="card-img-wrap"><img src="${API}${photo.url}" alt="${photo.name}" loading="lazy"></div>
+      <div class="card-img-wrap"><img src="${imgSrc}" alt="${photo.name}" loading="lazy"></div>
       <div class="card-body">
         <input class="card-name-input" type="text" value="${photo.name}" data-id="${photo.id}">
         <div class="card-meta">
