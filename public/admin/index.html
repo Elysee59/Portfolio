@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ATELIER — Administration</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=EB+Garamond:ital,wght@0,400;0,500;1,400&family=Jost:wght@100;200;300;400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --wall:#F0EBE3;--ink:#0A0908;--coal:#1A1918;--dust:#B8AFA4;--rust:#8B6F5E;
+  --green:#2D6A4F;--red:#8B1A1A;
+  --ease:cubic-bezier(0.76,0,0.24,1);--eout:cubic-bezier(0.22,1,0.36,1);
+  --mh:60px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--wall);color:var(--ink);font-family:'Jost',sans-serif;font-weight:200;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;opacity:.45;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")}
+
+/* ── LOGIN ── */
+#login-screen{position:fixed;inset:0;background:var(--coal);z-index:5000;display:flex;align-items:center;justify-content:center;transition:opacity .8s var(--ease),visibility .8s}
+#login-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
+.login-box{display:flex;flex-direction:column;align-items:center;gap:32px;padding:64px;min-width:360px}
+.login-logo{font-family:'DM Serif Display',serif;font-size:42px;font-style:italic;color:var(--wall)}
+.login-sub{font-size:9px;letter-spacing:.42em;text-transform:uppercase;color:rgba(240,235,227,.22)}
+.login-form{display:flex;flex-direction:column;gap:14px;width:100%}
+.login-label{font-size:8px;letter-spacing:.38em;text-transform:uppercase;color:rgba(240,235,227,.28)}
+.login-input{background:rgba(240,235,227,.06);border:1px solid rgba(240,235,227,.12);color:var(--wall);font-family:'Jost',sans-serif;font-size:14px;font-weight:300;padding:14px 18px;outline:none;transition:border-color .3s;width:100%}
+.login-input:focus{border-color:rgba(240,235,227,.35)}
+.login-input::placeholder{color:rgba(240,235,227,.2)}
+.login-btn{background:var(--wall);color:var(--coal);border:none;font-family:'Jost',sans-serif;font-size:9px;letter-spacing:.38em;text-transform:uppercase;padding:16px;cursor:pointer;transition:opacity .3s;margin-top:8px}
+.login-btn:hover{opacity:.85}
+.login-error{font-size:9px;letter-spacing:.25em;color:rgba(180,60,60,.8);text-align:center;opacity:0;transition:opacity .3s;min-height:16px}
+.login-error.show{opacity:1}
+
+/* ── HEADER ── */
+.admin-header{position:sticky;top:0;z-index:100;background:var(--coal);padding:20px var(--mh);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(240,235,227,.07)}
+.ah-brand{font-family:'DM Serif Display',serif;font-size:13px;font-style:italic;color:var(--wall)}
+.ah-badge{font-size:7px;letter-spacing:.4em;text-transform:uppercase;background:rgba(45,106,79,.25);color:#6fcf97;border:1px solid rgba(45,106,79,.4);padding:4px 10px}
+.ah-right{display:flex;align-items:center;gap:20px}
+.ah-logout{font-size:8px;letter-spacing:.3em;text-transform:uppercase;color:rgba(240,235,227,.28);background:none;border:none;cursor:pointer;transition:color .3s}
+.ah-logout:hover{color:rgba(240,235,227,.7)}
+.ah-count{font-family:'EB Garamond',serif;font-size:13px;font-style:italic;color:rgba(240,235,227,.3)}
+
+/* ── TOOLBAR ── */
+.toolbar{padding:28px var(--mh);display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-bottom:1px solid rgba(10,9,8,.07)}
+.tb-title{font-family:'DM Serif Display',serif;font-size:22px;font-style:italic;color:var(--ink);flex:1;min-width:200px}
+.tb-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+
+.btn{font-family:'Jost',sans-serif;font-size:9px;letter-spacing:.3em;text-transform:uppercase;border:none;padding:11px 22px;cursor:pointer;position:relative;overflow:hidden;transition:color .35s var(--ease);display:inline-flex;align-items:center;gap:8px}
+.btn span{position:relative;z-index:1}
+.btn-primary{background:var(--ink);color:var(--wall)}
+.btn-primary:hover{opacity:.85}
+.btn-secondary{background:none;color:var(--ink);border:1px solid rgba(10,9,8,.2)}
+.btn-secondary::before{content:'';position:absolute;inset:0;background:var(--ink);transform:translateY(101%);transition:transform .35s var(--ease)}
+.btn-secondary:hover{color:var(--wall)}
+.btn-secondary:hover::before{transform:translateY(0)}
+.btn-danger{background:none;color:var(--red);border:1px solid rgba(139,26,26,.25);font-size:8px;padding:9px 16px}
+.btn-danger:hover{background:rgba(139,26,26,.08)}
+
+.save-ind{font-size:8px;letter-spacing:.25em;text-transform:uppercase;color:var(--green);opacity:0;transition:opacity .4s;display:flex;align-items:center;gap:6px}
+.save-ind.show{opacity:1}
+.sdot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+#add-input{display:none}
+
+/* ── STATUS ── */
+.status-bar{padding:10px var(--mh);background:rgba(10,9,8,.03);border-bottom:1px solid rgba(10,9,8,.06);display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.sb-item{font-size:8px;letter-spacing:.28em;text-transform:uppercase;color:var(--dust);display:flex;align-items:center;gap:6px}
+.sb-val{color:var(--ink)}
+.sb-sep{width:1px;height:12px;background:rgba(10,9,8,.1)}
+
+/* ── GRID ── */
+.admin-grid{padding:40px var(--mh) 120px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:24px}
+.photo-card{background:#fff;position:relative;transition:box-shadow .4s var(--ease),transform .4s var(--ease)}
+.photo-card:hover{box-shadow:0 12px 40px rgba(10,9,8,.14);transform:translateY(-3px)}
+
+.card-drag-handle{position:absolute;top:10px;left:10px;z-index:3;width:24px;height:24px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;cursor:grab;opacity:0;transition:opacity .25s;background:rgba(255,255,255,.75);padding:4px}
+.photo-card:hover .card-drag-handle{opacity:1}
+.card-drag-handle span{display:block;width:12px;height:1px;background:rgba(10,9,8,.4)}
+
+.card-img-wrap{aspect-ratio:4/3;overflow:hidden;background:var(--wall);display:flex;align-items:center;justify-content:center}
+.card-img-wrap img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.card-body{padding:14px 16px 16px}
+.card-name-input{font-family:'EB Garamond',serif;font-size:14px;font-style:italic;color:var(--ink);background:none;border:none;border-bottom:1px solid transparent;outline:none;width:100%;transition:border-color .3s;padding:2px 0}
+.card-name-input:focus{border-color:rgba(10,9,8,.2)}
+.card-meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.card-dims{font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:var(--dust)}
+.card-order{font-family:'EB Garamond',serif;font-size:11px;font-style:italic;color:rgba(10,9,8,.25)}
+.card-published{font-size:7px;letter-spacing:.2em;text-transform:uppercase;padding:2px 6px;background:rgba(45,106,79,.12);color:#2D6A4F;border:1px solid rgba(45,106,79,.2)}
+
+.card-delete{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(10,9,8,.35);backdrop-filter:blur(6px);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s,background .25s}
+.photo-card:hover .card-delete{opacity:1}
+.card-delete:hover{background:rgba(155,35,28,.8)}
+.card-delete svg{width:9px;height:9px;stroke:rgba(240,235,227,.9);fill:none;stroke-width:2}
+
+.photo-card.dragging{opacity:.4}
+.photo-card.drag-over{outline:2px solid var(--rust);outline-offset:3px}
+
+/* ── PROGRESS ── */
+#upload-progress{position:fixed;bottom:32px;right:var(--mh);background:var(--coal);color:var(--wall);padding:14px 20px;display:none;flex-direction:column;gap:8px;z-index:9999;min-width:220px}
+#upload-progress.show{display:flex}
+.up-label{font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:rgba(240,235,227,.5)}
+.up-bar{height:2px;background:rgba(240,235,227,.1);overflow:hidden}
+.up-fill{height:100%;background:var(--rust);width:0;transition:width .3s}
+.up-count{font-size:9px;color:rgba(240,235,227,.6)}
+
+/* ── EMPTY ── */
+.admin-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:20px;text-align:center;padding:80px;grid-column:1/-1}
+.ae-icon{font-family:'DM Serif Display',serif;font-size:56px;font-style:italic;color:var(--dust);opacity:.3}
+.ae-title{font-family:'DM Serif Display',serif;font-size:20px;font-style:italic;color:var(--dust)}
+
+/* ── DROP VEIL ── */
+#drop-veil{position:fixed;inset:0;background:rgba(240,235,227,.06);border:2px dashed rgba(139,111,94,.4);z-index:4000;display:none;align-items:center;justify-content:center;pointer-events:none}
+#drop-veil.show{display:flex}
+.dv-msg h3{font-family:'DM Serif Display',serif;font-size:28px;font-style:italic;color:var(--rust);text-align:center}
+.dv-msg p{font-size:9px;letter-spacing:.32em;text-transform:uppercase;color:var(--dust);text-align:center;margin-top:10px}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--coal);color:var(--wall);font-size:9px;letter-spacing:.28em;text-transform:uppercase;padding:14px 28px;opacity:0;transition:opacity .4s,transform .4s var(--eout);pointer-events:none;z-index:9999}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+@media(max-width:600px){
+  :root{--mh:20px}
+  .toolbar{flex-direction:column;align-items:flex-start}
+  .admin-grid{grid-template-columns:1fr 1fr;gap:12px}
+}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">Atelier</div>
+    <div class="login-sub">Espace d'administration</div>
+    <div class="login-form">
+      <div class="login-label">Mot de passe</div>
+      <input type="password" id="pwd-input" class="login-input" placeholder="••••••••" autocomplete="current-password">
+      <button class="login-btn" id="login-btn"><span>Entrer</span></button>
+      <div class="login-error" id="login-error">Mot de passe incorrect</div>
+    </div>
+  </div>
+</div>
+
+<div id="drop-veil">
+  <div class="dv-msg"><h3>Ajouter à l'exposition</h3><p>Déposez vos photos ici</p></div>
+</div>
+
+<div id="toast"></div>
+
+<div id="upload-progress">
+  <div class="up-label">Upload en cours</div>
+  <div class="up-bar"><div class="up-fill" id="up-fill"></div></div>
+  <div class="up-count" id="up-count"></div>
+</div>
+
+<div id="admin-ui" style="display:none">
+  <header class="admin-header">
+    <div style="display:flex;align-items:center;gap:16px">
+      <div class="ah-brand">Atelier — Admin</div>
+      <div class="ah-badge">● Connecté</div>
+    </div>
+    <div class="ah-right">
+      <div class="ah-count"><span id="hdr-count">0</span> œuvres</div>
+      <button class="ah-logout" id="logout-btn">Déconnexion</button>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="tb-title">Gérer l'exposition</div>
+    <div class="tb-actions">
+      <div class="save-ind" id="save-ind"><div class="sdot"></div><span id="save-msg">Sauvegardé</span></div>
+      <label class="btn btn-secondary" for="add-input"><span>+ Ajouter des photos</span></label>
+      <input type="file" id="add-input" accept="image/*" multiple>
+      <button class="btn btn-primary" id="publish-btn"><span>↑ Publier l'exposition</span></button>
+      <button class="btn btn-danger" id="clear-btn">Tout effacer</button>
+    </div>
+  </div>
+
+  <div class="status-bar">
+    <div class="sb-item">Total <span class="sb-val" id="sb-total">0</span></div>
+    <div class="sb-sep"></div>
+    <div class="sb-item">Publiées <span class="sb-val" id="sb-pub">0</span></div>
+    <div class="sb-sep"></div>
+    <div class="sb-item">Dernière publication <span class="sb-val" id="sb-date">—</span></div>
+    <div class="sb-sep"></div>
+    <div class="sb-item">Ordre <span class="sb-val">Glisser pour réordonner</span></div>
+  </div>
+
+  <div class="admin-grid" id="admin-grid"></div>
+</div>
+
+<script>
+'use strict';
+
+/* ── CONFIG ── */
+const API = '';   // vide = même domaine, ou mettez https://votre-app.onrender.com
+
+/* ── TOKEN JWT ── */
+let token = localStorage.getItem('atelier-token') || null;
+
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+}
+
+/* ── INIT ── */
+(async () => {
+  if (token) {
+    // Vérifier que le token est encore valide
+    try {
+      const r = await fetch(`${API}/api/admin/photos`, { headers: authHeaders() });
+      if (r.ok) { showAdmin(await r.json()); return; }
+    } catch(e) {}
+    localStorage.removeItem('atelier-token');
+    token = null;
+  }
+})();
+
+/* ── LOGIN ── */
+document.getElementById('login-btn').addEventListener('click', doLogin);
+document.getElementById('pwd-input').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+
+async function doLogin() {
+  const pwd = document.getElementById('pwd-input').value;
+  try {
+    const r = await fetch(`${API}/api/auth/login`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ password: pwd })
+    });
+    if (!r.ok) throw new Error();
+    const { token: t } = await r.json();
+    token = t;
+    localStorage.setItem('atelier-token', t);
+    const photos = await (await fetch(`${API}/api/admin/photos`, { headers: authHeaders() })).json();
+    showAdmin(photos);
+  } catch(e) {
+    const err = document.getElementById('login-error');
+    err.classList.add('show');
+    document.getElementById('pwd-input').value = '';
+    setTimeout(() => err.classList.remove('show'), 2500);
+  }
+}
+
+document.getElementById('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('atelier-token');
+  location.reload();
+});
+
+/* ── ÉTAT ── */
+let photos = [];
+
+function showAdmin(data) {
+  document.getElementById('login-screen').classList.add('gone');
+  document.getElementById('admin-ui').style.display = 'block';
+  photos = data.sort((a,b) => a.order - b.order);
+  renderGrid();
+  updateStats();
+}
+
+/* ── UPLOAD ── */
+document.getElementById('add-input').addEventListener('change', e => {
+  uploadFiles(e.target.files); e.target.value = '';
+});
+
+async function uploadFiles(files) {
+  const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
+  if (!arr.length) return;
+
+  const prog  = document.getElementById('upload-progress');
+  const fill  = document.getElementById('up-fill');
+  const count = document.getElementById('up-count');
+  prog.classList.add('show');
+
+  const form = new FormData();
+  arr.forEach(f => form.append('photos', f));
+
+  count.textContent = `0 / ${arr.length} photos`;
+  fill.style.width = '10%';
+
+  try {
+    // Simuler progression (pas de XHR progress avec fetch simple)
+    let p = 10;
+    const tick = setInterval(() => { p = Math.min(p + 5, 85); fill.style.width = p + '%'; }, 200);
+
+    const r = await fetch(`${API}/api/admin/photos`, {
+      method:  'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body:    form
+    });
+
+    clearInterval(tick);
+    fill.style.width = '100%';
+
+    if (!r.ok) throw new Error(await r.text());
+    const { added } = await r.json();
+
+    photos.push(...added);
+    renderGrid(); updateStats();
+    showSave(`${added.length} photo${added.length>1?'s':''} ajoutée${added.length>1?'s':''}`);
+  } catch(e) {
+    showToast('Erreur upload : ' + e.message);
+  } finally {
+    setTimeout(() => { prog.classList.remove('show'); fill.style.width='0'; }, 800);
+  }
+}
+
+/* ── DRAG & DROP GLOBAL ── */
+const dv = document.getElementById('drop-veil'); let dn=0;
+document.addEventListener('dragenter', e => { if(!e.dataTransfer.types.includes('text/plain')){e.preventDefault();dn++;dv.classList.add('show');} });
+document.addEventListener('dragleave', () => { dn--;if(dn<=0){dn=0;dv.classList.remove('show');} });
+document.addEventListener('dragover',  e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault(); dn=0; dv.classList.remove('show');
+  if(e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
+});
+
+/* ── GRID ── */
+function renderGrid() {
+  const grid = document.getElementById('admin-grid');
+  document.getElementById('hdr-count').textContent = photos.length;
+
+  if (!photos.length) {
+    grid.innerHTML = `<div class="admin-empty">
+      <div class="ae-icon">∅</div>
+      <div class="ae-title">Aucune photo — ajoutez vos œuvres ci-dessus</div>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = '';
+  photos.forEach((photo, i) => {
+    const card = document.createElement('div');
+    card.className = 'photo-card';
+    card.draggable = true;
+    card.dataset.id = photo.id;
+    card.innerHTML = `
+      <div class="card-drag-handle"><span></span><span></span><span></span></div>
+      <div class="card-img-wrap"><img src="${API}${photo.url}" alt="${photo.name}" loading="lazy"></div>
+      <div class="card-body">
+        <input class="card-name-input" type="text" value="${photo.name}" data-id="${photo.id}">
+        <div class="card-meta">
+          <span class="card-dims">${photo.w}×${photo.h} · ${photo.orient}</span>
+          <div style="display:flex;align-items:center;gap:8px">
+            ${photo.published ? '<span class="card-published">Publié</span>' : ''}
+            <span class="card-order">${String(i+1).padStart(2,'0')}</span>
+          </div>
+        </div>
+      </div>
+      <button class="card-delete" data-id="${photo.id}">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>`;
+
+    // Renommer
+    card.querySelector('.card-name-input').addEventListener('change', async e => {
+      const p = photos.find(x => x.id === e.target.dataset.id);
+      if (!p) return;
+      p.name = e.target.value;
+      await fetch(`${API}/api/admin/photos/${p.id}`, {
+        method:  'PUT',
+        headers: authHeaders(),
+        body:    JSON.stringify({ name: p.name })
+      });
+      showSave('Nom mis à jour');
+    });
+
+    // Supprimer
+    card.querySelector('.card-delete').addEventListener('click', async e => {
+      const id = e.currentTarget.dataset.id;
+      if (!confirm('Retirer cette photo ?')) return;
+      await fetch(`${API}/api/admin/photos/${id}`, { method: 'DELETE', headers: authHeaders() });
+      photos = photos.filter(x => x.id !== id);
+      renderGrid(); updateStats();
+    });
+
+    setupDrag(card);
+    grid.appendChild(card);
+  });
+}
+
+/* ── DRAG-TO-REORDER ── */
+let dragSrc = null;
+function setupDrag(card) {
+  card.addEventListener('dragstart', e => {
+    if(e.target.tagName==='INPUT'){e.preventDefault();return;}
+    dragSrc=card; card.classList.add('dragging');
+    e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',card.dataset.id);
+  });
+  card.addEventListener('dragend',  () => { card.classList.remove('dragging'); document.querySelectorAll('.photo-card').forEach(c=>c.classList.remove('drag-over')); });
+  card.addEventListener('dragover', e => { if(e.dataTransfer.types.includes('text/plain')){e.preventDefault();card.classList.add('drag-over');} });
+  card.addEventListener('dragleave',() => card.classList.remove('drag-over'));
+  card.addEventListener('drop', async e => {
+    e.preventDefault(); e.stopPropagation(); card.classList.remove('drag-over');
+    if(dragSrc && dragSrc!==card){
+      const si=photos.findIndex(p=>p.id===dragSrc.dataset.id), di=photos.findIndex(p=>p.id===card.dataset.id);
+      if(si!==-1&&di!==-1){ const [m]=photos.splice(si,1); photos.splice(di,0,m); }
+      renderGrid(); updateStats();
+      await fetch(`${API}/api/admin/reorder`, { method:'POST', headers:authHeaders(), body:JSON.stringify({ids:photos.map(p=>p.id)}) });
+      showSave('Ordre sauvegardé');
+    }
+  });
+}
+
+/* ── PUBLISH ── */
+document.getElementById('publish-btn').addEventListener('click', async () => {
+  if(!photos.length){ showToast('Aucune photo à publier'); return; }
+  const r = await fetch(`${API}/api/admin/publish`, {
+    method:  'POST',
+    headers: authHeaders(),
+    body:    JSON.stringify({ ids: photos.map(p => p.id) })
+  });
+  const { published } = await r.json();
+  photos.forEach(p => p.published = true);
+  renderGrid(); updateStats();
+  const now = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  document.getElementById('sb-date').textContent = now;
+  showToast(`✓ ${published} œuvres publiées et visibles en ligne`);
+  showSave('Publié ✓');
+});
+
+/* ── CLEAR ── */
+document.getElementById('clear-btn').addEventListener('click', async () => {
+  if(!confirm('Effacer toutes les photos du serveur ?')) return;
+  await fetch(`${API}/api/admin/photos`, { method:'DELETE', headers:authHeaders() });
+  photos = []; renderGrid(); updateStats();
+  showToast('Exposition vidée');
+});
+
+/* ── STATS ── */
+function updateStats(){
+  document.getElementById('sb-total').textContent = photos.length;
+  document.getElementById('sb-pub').textContent   = photos.filter(p=>p.published).length;
+  document.getElementById('hdr-count').textContent = photos.length;
+}
+
+/* ── UTILS ── */
+let toastTimer;
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),3500); }
+function showSave(msg){ const el=document.getElementById('save-ind'); document.getElementById('save-msg').textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2500); }
+</script>
+</body>
+</html>

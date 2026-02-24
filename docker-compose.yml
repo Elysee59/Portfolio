@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  portfolio:
+    build: .
+    container_name: atelier-portfolio
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV:       production
+      PORT:           3000
+      UPLOADS_DIR:    /data/uploads
+      # ── Auth ────────────────────────────
+      ADMIN_PASSWORD: atelier2024
+      JWT_SECRET:     mon_secret_jwt_tres_long_32chars_min
+      # ── Cloudinary ──────────────────────
+      # Copiez ces valeurs depuis cloudinary.com → Dashboard
+      CLOUDINARY_CLOUD_NAME: votre_cloud_name
+      CLOUDINARY_API_KEY:    votre_api_key
+      CLOUDINARY_API_SECRET: votre_api_secret
+    volumes:
+      - db_cache:/data/uploads   # cache JSON local
+
+volumes:
+  db_cache:
+    driver: local

@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: atelier-portfolio
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+
+    envVars:
+      - key:   NODE_ENV
+        value: production
+      - key:   PORT
+        value: 3000
+      - key:   UPLOADS_DIR
+        value: /data/uploads
+      # ── Valeurs secrètes à saisir dans le dashboard Render ──
+      - key:  ADMIN_PASSWORD
+        sync: false
+      - key:  JWT_SECRET
+        sync: false
+      - key:  CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key:  CLOUDINARY_API_KEY
+        sync: false
+      - key:  CLOUDINARY_API_SECRET
+        sync: false
+
+    healthCheckPath: /api/health

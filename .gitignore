@@ -1,0 +1,11 @@
+node_modules/
+uploads/*.jpg
+uploads/*.jpeg
+uploads/*.png
+uploads/*.webp
+uploads/*.gif
+uploads/*.avif
+uploads/photos.json
+.env
+.env.local
+.DS_Store
