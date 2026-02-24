@@ -193,11 +193,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
 'use strict';
 
 /* ── CONFIG ── */
-const API = '';   // vide = même domaine, ou mettez https://votre-app.onrender.com
+const API = ''; // vide = même domaine, ou mettez https://votre-app.onrender.com
 
-// Cloudinary Free : limite pratique 10MB/image (évite l'erreur 500 côté UI)
-const MAX_MB = 10;
-const MAX_BYTES = MAX_MB * 1024 * 1024;
+// Cloudinary Free limite "hard" ~10MB/image → on compresse au-delà
+const CLD_LIMIT_MB = 10;
+const CLD_LIMIT_BYTES = CLD_LIMIT_MB * 1024 * 1024;
+
+// Paramètres demandés
+const JPEG_QUALITY = 0.85;
+const MAX_SIDE = 3200;
 
 /* ── TOKEN JWT ── */
 let token = localStorage.getItem('atelier-token') || null;
@@ -209,7 +213,6 @@ function authHeaders() {
 /* ── INIT ── */
 (async () => {
   if (token) {
-    // Vérifier que le token est encore valide
     try {
       const r = await fetch(`${API}/api/admin/photos`, { headers: authHeaders() });
       if (r.ok) { showAdmin(await r.json()); return; }
@@ -261,13 +264,7 @@ function showAdmin(data) {
   updateStats();
 }
 
-/* ── UPLOAD DIRECT NAVIGATEUR → CLOUDINARY ──
-   Flux :
-   1. Demander une signature au serveur (GET /api/admin/sign)
-   2. POST directement sur l'API Cloudinary avec la signature
-   3. Notifier le serveur pour qu'il enregistre les métadonnées
-   Avantage : aucun fichier ne transite par Render
-── */
+/* ── UPLOAD DIRECT NAVIGATEUR → CLOUDINARY ── */
 document.getElementById('add-input').addEventListener('change', e => {
   uploadFiles(e.target.files); e.target.value = '';
 });
@@ -285,24 +282,33 @@ async function uploadFiles(files) {
   count.textContent = `0 / ${arr.length}`;
   fill.style.width = '0%';
 
-  for (const file of arr) {
+  for (const originalFile of arr) {
     try {
-      // Limite Cloudinary Free : 10MB (évite les erreurs "File size too large")
-      if (file.size > MAX_BYTES) {
-        showToast(`Image trop lourde : ${MAX_MB} MB max (Cloudinary Free).`);
-        continue;
+      count.textContent = `${done + 1} / ${arr.length} — ${originalFile.name}`;
+
+      // 0) Compresser si > 10MB (Cloudinary Free)
+      let file = originalFile;
+      if (file.size > CLD_LIMIT_BYTES) {
+        showToast(`Compression : ${originalFile.name} (> ${CLD_LIMIT_MB}MB) → JPEG ${Math.round(JPEG_QUALITY*100)}% / max ${MAX_SIDE}px`);
+        file = await compressToJpeg(originalFile, { quality: JPEG_QUALITY, maxSide: MAX_SIDE });
+        if (!file || !file.size) throw new Error('Compression impossible');
+
+        // Si toujours trop gros, on tente une seconde passe (qualité un peu plus basse)
+        if (file.size > CLD_LIMIT_BYTES) {
+          file = await compressToJpeg(originalFile, { quality: Math.max(0.75, JPEG_QUALITY - 0.10), maxSide: MAX_SIDE });
+        }
+        if (file.size > CLD_LIMIT_BYTES) {
+          throw new Error(`Image encore trop lourde après compression (${(file.size/1024/1024).toFixed(1)}MB). Réduisez la résolution ou passez Cloudinary Plus.`);
+        }
       }
 
-      count.textContent = `${done + 1} / ${arr.length} — ${file.name}`;
-
-      // 1. Obtenir une signature fraîche du serveur
+      // 1) Signature serveur
       const sigRes = await fetch(`${API}/api/admin/sign`, { headers: authHeaders(), cache: 'no-store' });
       if (!sigRes.ok) throw new Error('Signature refusée : ' + await sigRes.text());
       const sig = await sigRes.json();
-      // sig = { timestamp, signature, folder, public_id, api_key, cloud_name }
 
-      // 2. Upload direct vers Cloudinary via XMLHttpRequest (pour la barre de progression)
-      await new Promise((resolve, reject) => {
+      // 2) Upload direct Cloudinary (XHR pour progress)
+      const cloudinaryOut = await new Promise((resolve, reject) => {
         const form = new FormData();
         form.append('file',       file);
         form.append('api_key',    sig.api_key);
@@ -329,17 +335,16 @@ async function uploadFiles(files) {
         xhr.send(form);
       });
 
-      // 3. Enregistrer les métadonnées sur le serveur
-      // On relit les dimensions depuis l'image localement pour éviter un appel API
-      const dims = await getImageDimensions(file);
+      // 3) Register côté serveur
+      // Dimensions : on préfère celles renvoyées par Cloudinary (fiables)
       const regRes = await fetch(`${API}/api/admin/photos/register`, {
         method:  'POST',
         headers: authHeaders(),
         body:    JSON.stringify({
           cloudinaryId: sig.folder + '/' + sig.public_id,
-          originalName: file.name,
-          w:            dims.w,
-          h:            dims.h,
+          originalName: originalFile.name,
+          w:            cloudinaryOut.width || 0,
+          h:            cloudinaryOut.height || 0,
         }),
       });
       if (!regRes.ok) throw new Error('Register error : ' + await regRes.text());
@@ -361,15 +366,56 @@ async function uploadFiles(files) {
   setTimeout(() => { prog.classList.remove('show'); fill.style.width = '0'; }, 900);
 }
 
-// Lire les dimensions d'un fichier image localement (sans upload)
-function getImageDimensions(file) {
-  return new Promise((resolve) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload  = () => { URL.revokeObjectURL(url); resolve({ w: img.naturalWidth, h: img.naturalHeight }); };
-    img.onerror = () => { URL.revokeObjectURL(url); resolve({ w: 0, h: 0 }); };
-    img.src = url;
-  });
+/* ── Compression JPEG (qualité 0.85, max 3200px) ── */
+async function compressToJpeg(file, { quality = 0.85, maxSide = 3200 } = {}) {
+  const bmp = await fileToImageBitmap(file);
+  const { width, height } = fitInside(bmp.width, bmp.height, maxSide);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+
+  const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(bmp, 0, 0, width, height);
+
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+  if (!blob) return null;
+
+  const base = file.name.replace(/\.[^.]+$/, '');
+  return new File([blob], `${base}.jpg`, { type: 'image/jpeg' });
+}
+
+async function fileToImageBitmap(file) {
+  // createImageBitmap est le plus rapide, fallback <img> sinon
+  if ('createImageBitmap' in window) {
+    try { return await createImageBitmap(file); } catch(e) {}
+  }
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = reject;
+      i.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = img.naturalWidth || img.width;
+    canvas.height = img.naturalHeight || img.height;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    ctx.drawImage(img, 0, 0);
+    // Convertit en bitmap-like
+    return { width: canvas.width, height: canvas.height, _canvas: canvas };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function fitInside(w, h, maxSide) {
+  if (!maxSide || (w <= maxSide && h <= maxSide)) return { width: w, height: h };
+  const scale = maxSide / Math.max(w, h);
+  return { width: Math.round(w * scale), height: Math.round(h * scale) };
 }
 
 /* ── DRAG & DROP GLOBAL ── */
@@ -402,7 +448,7 @@ function renderGrid() {
     card.draggable = true;
     card.dataset.id = photo.id;
 
-    // IMPORTANT : photo.url / photo.thumbUrl sont déjà des URLs Cloudinary complètes
+    // photo.url / photo.thumbUrl sont déjà des URLs Cloudinary complètes
     const imgSrc = photo.thumbUrl || photo.url;
 
     card.innerHTML = `
