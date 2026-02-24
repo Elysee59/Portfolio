@@ -13,11 +13,11 @@ services:
       UPLOADS_DIR:    /data/uploads
       # ── Auth ────────────────────────────
       ADMIN_PASSWORD: George59100@
-      JWT_SECRET:     697a8ad15c7d6c5f5d138627bc17a4812f65201264051258d49dce214d084df1
+      JWT_SECRET: 697a8ad15c7d6c5f5d138627bc17a4812f65201264051258d49dce214d084df1
       # ── Cloudinary ──────────────────────
       
       CLOUDINARY_CLOUD_NAME: dipdeymyu
-      CLOUDINARY_API_KEY:    348824824962538
+      CLOUDINARY_API_KEY: 348824824962538
       CLOUDINARY_API_SECRET: wN78s4napTqnJIARuPSsbB0ztzo
     volumes:
       - db_cache:/data/uploads   # cache JSON local
