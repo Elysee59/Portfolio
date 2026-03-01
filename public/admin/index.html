@@ -8,126 +8,210 @@
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 :root{
-  --wall:#F0EBE3;--ink:#0A0908;--coal:#1A1918;--dust:#B8AFA4;--rust:#8B6F5E;
-  --green:#2D6A4F;--red:#8B1A1A;
-  --ease:cubic-bezier(0.76,0,0.24,1);--eout:cubic-bezier(0.22,1,0.36,1);
-  --mh:60px;
+  --bg:#F5F4F0;--ink:#0A0908;--coal:#1A1918;--dust:#B8AFA4;--rust:#8B6F5E;
+  --green:#2D6A4F;--red:#8B1A1A;--blue:#1A3A6A;
+  --eout:cubic-bezier(0.22,1,0.36,1);
 }
-html{scroll-behavior:smooth}
-body{background:var(--wall);color:var(--ink);font-family:'Jost',sans-serif;font-weight:200;min-height:100vh;overflow-x:hidden}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;opacity:.45;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--ink);font-family:'Jost',sans-serif;font-weight:200}
 
-/* ── LOGIN ── */
-#login-screen{position:fixed;inset:0;background:var(--coal);z-index:5000;display:flex;align-items:center;justify-content:center;transition:opacity .8s var(--ease),visibility .8s}
+/* ══ LOGIN ══ */
+#login-screen{position:fixed;inset:0;background:var(--coal);z-index:5000;display:flex;align-items:center;justify-content:center;transition:opacity .8s,visibility .8s}
 #login-screen.gone{opacity:0;visibility:hidden;pointer-events:none}
 .login-box{display:flex;flex-direction:column;align-items:center;gap:32px;padding:64px;min-width:360px}
-.login-logo{font-family:'DM Serif Display',serif;font-size:42px;font-style:italic;color:var(--wall)}
-.login-sub{font-size:9px;letter-spacing:.42em;text-transform:uppercase;color:rgba(240,235,227,.22)}
+.login-logo{font-family:'DM Serif Display',serif;font-size:40px;font-style:italic;color:#F5F4F0}
+.login-sub{font-size:9px;letter-spacing:.42em;text-transform:uppercase;color:rgba(245,244,240,.2)}
 .login-form{display:flex;flex-direction:column;gap:14px;width:100%}
-.login-label{font-size:8px;letter-spacing:.38em;text-transform:uppercase;color:rgba(240,235,227,.28)}
-.login-input{background:rgba(240,235,227,.06);border:1px solid rgba(240,235,227,.12);color:var(--wall);font-family:'Jost',sans-serif;font-size:14px;font-weight:300;padding:14px 18px;outline:none;transition:border-color .3s;width:100%}
-.login-input:focus{border-color:rgba(240,235,227,.35)}
-.login-input::placeholder{color:rgba(240,235,227,.2)}
-.login-btn{background:var(--wall);color:var(--coal);border:none;font-family:'Jost',sans-serif;font-size:9px;letter-spacing:.38em;text-transform:uppercase;padding:16px;cursor:pointer;transition:opacity .3s;margin-top:8px}
+.login-label{font-size:8px;letter-spacing:.36em;text-transform:uppercase;color:rgba(245,244,240,.28)}
+.login-input{background:rgba(245,244,240,.06);border:1px solid rgba(245,244,240,.12);color:#F5F4F0;font-family:'Jost',sans-serif;font-size:14px;font-weight:300;padding:14px 18px;outline:none;transition:border-color .3s;width:100%}
+.login-input:focus{border-color:rgba(245,244,240,.36)}
+.login-btn{background:#F5F4F0;color:var(--coal);border:none;font-family:'Jost',sans-serif;font-size:9px;letter-spacing:.38em;text-transform:uppercase;padding:16px;cursor:pointer;transition:opacity .3s;margin-top:8px}
 .login-btn:hover{opacity:.85}
-.login-error{font-size:9px;letter-spacing:.25em;color:rgba(180,60,60,.8);text-align:center;opacity:0;transition:opacity .3s;min-height:16px}
+.login-error{font-size:9px;letter-spacing:.24em;color:rgba(180,60,60,.8);text-align:center;opacity:0;transition:opacity .3s;min-height:16px}
 .login-error.show{opacity:1}
 
-/* ── HEADER ── */
-.admin-header{position:sticky;top:0;z-index:100;background:var(--coal);padding:20px var(--mh);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(240,235,227,.07)}
-.ah-brand{font-family:'DM Serif Display',serif;font-size:13px;font-style:italic;color:var(--wall)}
-.ah-badge{font-size:7px;letter-spacing:.4em;text-transform:uppercase;background:rgba(45,106,79,.25);color:#6fcf97;border:1px solid rgba(45,106,79,.4);padding:4px 10px}
-.ah-right{display:flex;align-items:center;gap:20px}
-.ah-logout{font-size:8px;letter-spacing:.3em;text-transform:uppercase;color:rgba(240,235,227,.28);background:none;border:none;cursor:pointer;transition:color .3s}
-.ah-logout:hover{color:rgba(240,235,227,.7)}
-.ah-count{font-family:'EB Garamond',serif;font-size:13px;font-style:italic;color:rgba(240,235,227,.3)}
+/* ══ LAYOUT ADMIN ══ */
+#admin-ui{display:none;width:100%;height:100%;flex-direction:column}
+#admin-ui.show{display:flex}
 
-/* ── TOOLBAR ── */
-.toolbar{padding:28px var(--mh);display:flex;align-items:center;gap:16px;flex-wrap:wrap;border-bottom:1px solid rgba(10,9,8,.07)}
-.tb-title{font-family:'DM Serif Display',serif;font-size:22px;font-style:italic;color:var(--ink);flex:1;min-width:200px}
-.tb-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+/* ── Header ── */
+.ah{
+  flex-shrink:0;background:var(--coal);
+  padding:0 28px;height:52px;
+  display:flex;align-items:center;justify-content:space-between;
+  border-bottom:1px solid rgba(245,244,240,.06);
+  z-index:200;
+}
+.ah-brand{font-family:'DM Serif Display',serif;font-size:13px;font-style:italic;color:#F5F4F0;display:flex;align-items:center;gap:12px}
+.ah-badge{font-size:7px;letter-spacing:.36em;text-transform:uppercase;background:rgba(45,106,79,.2);color:#6fcf97;border:1px solid rgba(45,106,79,.35);padding:3px 9px}
+.ah-right{display:flex;align-items:center;gap:16px}
+.ah-count{font-family:'EB Garamond',serif;font-size:13px;font-style:italic;color:rgba(245,244,240,.3)}
+.ah-btn{font-family:'Jost',sans-serif;font-size:8px;letter-spacing:.28em;text-transform:uppercase;background:none;border:none;color:rgba(245,244,240,.3);cursor:pointer;transition:color .3s;padding:4px 0}
+.ah-btn:hover{color:rgba(245,244,240,.75)}
+.ah-btn.primary{background:#F5F4F0;color:var(--coal);padding:8px 18px;transition:opacity .3s}
+.ah-btn.primary:hover{opacity:.85}
+.ah-btn.danger{color:rgba(180,60,60,.5)}
+.ah-btn.danger:hover{color:rgba(180,60,60,.9)}
+.ah-sep{width:1px;height:20px;background:rgba(245,244,240,.08)}
 
-.btn{font-family:'Jost',sans-serif;font-size:9px;letter-spacing:.3em;text-transform:uppercase;border:none;padding:11px 22px;cursor:pointer;position:relative;overflow:hidden;transition:color .35s var(--ease);display:inline-flex;align-items:center;gap:8px}
-.btn span{position:relative;z-index:1}
-.btn-primary{background:var(--ink);color:var(--wall)}
-.btn-primary:hover{opacity:.85}
-.btn-secondary{background:none;color:var(--ink);border:1px solid rgba(10,9,8,.2)}
-.btn-secondary::before{content:'';position:absolute;inset:0;background:var(--ink);transform:translateY(101%);transition:transform .35s var(--ease)}
-.btn-secondary:hover{color:var(--wall)}
-.btn-secondary:hover::before{transform:translateY(0)}
-.btn-danger{background:none;color:var(--red);border:1px solid rgba(139,26,26,.25);font-size:8px;padding:9px 16px}
-.btn-danger:hover{background:rgba(139,26,26,.08)}
+/* ── Barre d'outils latérale ── */
+#sidebar{
+  position:absolute;left:0;top:52px;bottom:0;
+  width:220px;background:var(--coal);
+  border-right:1px solid rgba(245,244,240,.06);
+  display:flex;flex-direction:column;
+  z-index:150;overflow-y:auto;
+}
+.sb-section{padding:18px 18px 10px;border-bottom:1px solid rgba(245,244,240,.05)}
+.sb-title{font-size:7px;letter-spacing:.38em;text-transform:uppercase;color:rgba(245,244,240,.22);margin-bottom:12px}
 
-.save-ind{font-size:8px;letter-spacing:.25em;text-transform:uppercase;color:var(--green);opacity:0;transition:opacity .4s;display:flex;align-items:center;gap:6px}
-.save-ind.show{opacity:1}
-.sdot{width:5px;height:5px;border-radius:50%;background:var(--green)}
+/* Upload zone */
+.sb-upload{
+  border:1px dashed rgba(245,244,240,.15);padding:16px 12px;
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  cursor:pointer;transition:border-color .3s,background .3s;text-align:center;
+}
+.sb-upload:hover{border-color:rgba(139,111,94,.5);background:rgba(139,111,94,.06)}
+.sb-upload-icon{font-size:22px;color:rgba(245,244,240,.2)}
+.sb-upload-txt{font-size:8px;letter-spacing:.28em;text-transform:uppercase;color:rgba(245,244,240,.3)}
 #add-input{display:none}
 
-/* ── STATUS ── */
-.status-bar{padding:10px var(--mh);background:rgba(10,9,8,.03);border-bottom:1px solid rgba(10,9,8,.06);display:flex;align-items:center;gap:24px;flex-wrap:wrap}
-.sb-item{font-size:8px;letter-spacing:.28em;text-transform:uppercase;color:var(--dust);display:flex;align-items:center;gap:6px}
-.sb-val{color:var(--ink)}
-.sb-sep{width:1px;height:12px;background:rgba(10,9,8,.1)}
-
-/* ── GRID ── */
-.admin-grid{padding:40px var(--mh) 120px;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:24px}
-.photo-card{background:#fff;position:relative;transition:box-shadow .4s var(--ease),transform .4s var(--ease)}
-.photo-card:hover{box-shadow:0 12px 40px rgba(10,9,8,.14);transform:translateY(-3px)}
-
-.card-drag-handle{position:absolute;top:10px;left:10px;z-index:3;width:24px;height:24px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:3px;cursor:grab;opacity:0;transition:opacity .25s;background:rgba(255,255,255,.75);padding:4px}
-.photo-card:hover .card-drag-handle{opacity:1}
-.card-drag-handle span{display:block;width:12px;height:1px;background:rgba(10,9,8,.4)}
-
-.card-img-wrap{aspect-ratio:4/3;overflow:hidden;background:var(--wall);display:flex;align-items:center;justify-content:center}
-.card-img-wrap img{max-width:100%;max-height:100%;object-fit:contain;display:block}
-.card-body{padding:14px 16px 16px}
-.card-name-input{font-family:'EB Garamond',serif;font-size:14px;font-style:italic;color:var(--ink);background:none;border:none;border-bottom:1px solid transparent;outline:none;width:100%;transition:border-color .3s;padding:2px 0}
-.card-name-input:focus{border-color:rgba(10,9,8,.2)}
-.card-meta{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
-.card-dims{font-size:7px;letter-spacing:.22em;text-transform:uppercase;color:var(--dust)}
-.card-order{font-family:'EB Garamond',serif;font-size:11px;font-style:italic;color:rgba(10,9,8,.25)}
-.card-published{font-size:7px;letter-spacing:.2em;text-transform:uppercase;padding:2px 6px;background:rgba(45,106,79,.12);color:#2D6A4F;border:1px solid rgba(45,106,79,.2)}
-
-.card-delete{position:absolute;top:10px;right:10px;width:26px;height:26px;border-radius:50%;background:rgba(10,9,8,.35);backdrop-filter:blur(6px);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s,background .25s}
-.photo-card:hover .card-delete{opacity:1}
-.card-delete:hover{background:rgba(155,35,28,.8)}
-.card-delete svg{width:9px;height:9px;stroke:rgba(240,235,227,.9);fill:none;stroke-width:2}
-
-.photo-card.dragging{opacity:.4}
-.photo-card.drag-over{outline:2px solid var(--rust);outline-offset:3px}
-
-/* ── PROGRESS ── */
-#upload-progress{position:fixed;bottom:32px;right:var(--mh);background:var(--coal);color:var(--wall);padding:14px 20px;display:none;flex-direction:column;gap:8px;z-index:9999;min-width:220px}
-#upload-progress.show{display:flex}
-.up-label{font-size:8px;letter-spacing:.32em;text-transform:uppercase;color:rgba(240,235,227,.5)}
-.up-bar{height:2px;background:rgba(240,235,227,.1);overflow:hidden}
+/* Progress */
+#up-progress{display:none;flex-direction:column;gap:6px;padding:10px 0}
+#up-progress.show{display:flex}
+.up-bar{height:2px;background:rgba(245,244,240,.1)}
 .up-fill{height:100%;background:var(--rust);width:0;transition:width .3s}
-.up-count{font-size:9px;color:rgba(240,235,227,.6)}
+.up-txt{font-size:8px;color:rgba(245,244,240,.35);letter-spacing:.2em}
 
-/* ── EMPTY ── */
-.admin-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:50vh;gap:20px;text-align:center;padding:80px;grid-column:1/-1}
-.ae-icon{font-family:'DM Serif Display',serif;font-size:56px;font-style:italic;color:var(--dust);opacity:.3}
-.ae-title{font-family:'DM Serif Display',serif;font-size:20px;font-style:italic;color:var(--dust)}
+/* Palette photos non placées */
+#palette{
+  flex:1;overflow-y:auto;padding:10px 12px;
+  display:flex;flex-direction:column;gap:8px;
+}
+.pal-item{
+  background:rgba(245,244,240,.04);border:1px solid rgba(245,244,240,.08);
+  padding:8px;display:flex;align-items:center;gap:10px;
+  cursor:grab;transition:background .2s,border-color .2s;
+  position:relative;
+}
+.pal-item:hover{background:rgba(245,244,240,.08);border-color:rgba(139,111,94,.3)}
+.pal-item.placed{opacity:.4}
+.pal-thumb{width:44px;height:32px;object-fit:cover;flex-shrink:0;background:rgba(245,244,240,.06)}
+.pal-info{flex:1;min-width:0}
+.pal-name{font-size:9px;color:rgba(245,244,240,.5);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pal-dims{font-size:7px;letter-spacing:.18em;color:rgba(245,244,240,.2);margin-top:2px}
+.pal-del{background:none;border:none;color:rgba(180,60,60,.4);cursor:pointer;font-size:14px;line-height:1;padding:2px;transition:color .2s;flex-shrink:0}
+.pal-del:hover{color:rgba(180,60,60,.8)}
+.pal-empty{font-size:8px;letter-spacing:.24em;text-transform:uppercase;color:rgba(245,244,240,.16);text-align:center;padding:20px 0}
 
-/* ── DROP VEIL ── */
-#drop-veil{position:fixed;inset:0;background:rgba(240,235,227,.06);border:2px dashed rgba(139,111,94,.4);z-index:4000;display:none;align-items:center;justify-content:center;pointer-events:none}
-#drop-veil.show{display:flex}
-.dv-msg h3{font-family:'DM Serif Display',serif;font-size:28px;font-style:italic;color:var(--rust);text-align:center}
-.dv-msg p{font-size:9px;letter-spacing:.32em;text-transform:uppercase;color:var(--dust);text-align:center;margin-top:10px}
+/* ── Toile éditeur ── */
+#editor-wrap{
+  position:absolute;
+  left:220px;top:52px;right:0;bottom:44px;
+  overflow:hidden;background:var(--bg);
+  cursor:default;
+}
 
-/* ── TOAST ── */
-#toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--coal);color:var(--wall);font-size:9px;letter-spacing:.28em;text-transform:uppercase;padding:14px 28px;opacity:0;transition:opacity .4s,transform .4s var(--eout);pointer-events:none;z-index:9999}
+/* Grille de fond subtile */
+#editor-wrap::before{
+  content:'';position:absolute;inset:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(10,9,8,.04) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(10,9,8,.04) 1px,transparent 1px);
+  background-size:40px 40px;
+  z-index:0;
+}
+
+#editor-canvas{
+  position:absolute;top:0;left:0;
+  transform-origin:0 0;
+  will-change:transform;
+}
+
+/* ── Carte photo dans l'éditeur ── */
+.ec-card{
+  position:absolute;
+  cursor:move;
+  user-select:none;
+}
+.ec-card.selected .ec-frame{
+  outline:2px solid rgba(139,111,94,.8);
+  outline-offset:1px;
+}
+.ec-frame{
+  width:100%;height:100%;
+  overflow:hidden;
+  box-shadow:0 3px 12px rgba(10,9,8,.10),0 10px 30px rgba(10,9,8,.09);
+  transition:box-shadow .3s;
+  background:#fff;
+}
+.ec-card:hover .ec-frame{
+  box-shadow:0 6px 20px rgba(10,9,8,.14),0 18px 48px rgba(10,9,8,.12);
+}
+.ec-card img{
+  width:100%;height:100%;
+  object-fit:cover;
+  pointer-events:none;
+  display:block;
+}
+
+/* Poignées de redimensionnement */
+.ec-handle{
+  position:absolute;width:12px;height:12px;
+  background:#fff;border:2px solid rgba(139,111,94,.8);
+  border-radius:2px;z-index:10;
+  opacity:0;transition:opacity .2s;
+}
+.ec-card.selected .ec-handle{opacity:1}
+.ec-handle.nw{top:-6px;left:-6px;cursor:nw-resize}
+.ec-handle.ne{top:-6px;right:-6px;cursor:ne-resize}
+.ec-handle.sw{bottom:-6px;left:-6px;cursor:sw-resize}
+.ec-handle.se{bottom:-6px;right:-6px;cursor:se-resize}
+.ec-handle.n{top:-6px;left:50%;margin-left:-6px;cursor:n-resize}
+.ec-handle.s{bottom:-6px;left:50%;margin-left:-6px;cursor:s-resize}
+.ec-handle.w{top:50%;margin-top:-6px;left:-6px;cursor:w-resize}
+.ec-handle.e{top:50%;margin-top:-6px;right:-6px;cursor:e-resize}
+
+/* Badge nom */
+.ec-badge{
+  position:absolute;bottom:-22px;left:0;
+  font-family:'EB Garamond',serif;font-size:11px;font-style:italic;
+  color:rgba(10,9,8,.3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;
+  pointer-events:none;
+}
+
+/* ── Barre de status bas ── */
+#statusbar{
+  position:absolute;left:220px;right:0;bottom:0;height:44px;
+  background:rgba(245,244,240,.92);border-top:1px solid rgba(10,9,8,.07);
+  backdrop-filter:blur(8px);
+  display:flex;align-items:center;gap:20px;padding:0 20px;
+  z-index:150;
+}
+.st-item{font-size:8px;letter-spacing:.26em;text-transform:uppercase;color:rgba(10,9,8,.3)}
+.st-item span{color:var(--ink)}
+.st-sep{width:1px;height:14px;background:rgba(10,9,8,.1)}
+.st-hint{flex:1;text-align:right;font-size:8px;letter-spacing:.22em;text-transform:uppercase;color:rgba(10,9,8,.2)}
+#zoom-val{min-width:38px;text-align:center}
+
+/* ── Contrôles zoom ── */
+.zoom-ctrl{display:flex;align-items:center;gap:4px}
+.zoom-btn{background:none;border:1px solid rgba(10,9,8,.12);width:22px;height:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;color:rgba(10,9,8,.4);line-height:1;transition:all .2s}
+.zoom-btn:hover{border-color:rgba(10,9,8,.3);color:var(--ink)}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--coal);color:#F5F4F0;font-size:8px;letter-spacing:.28em;text-transform:uppercase;padding:12px 24px;opacity:0;transition:opacity .4s,transform .4s var(--eout);pointer-events:none;z-index:9999}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-@media(max-width:600px){
-  :root{--mh:20px}
-  .toolbar{flex-direction:column;align-items:flex-start}
-  .admin-grid{grid-template-columns:1fr 1fr;gap:12px}
-}
+/* ── Drop veil ── */
+#drop-veil{position:fixed;inset:0;background:rgba(245,244,240,.06);border:2px dashed rgba(139,111,94,.4);z-index:4000;display:none;align-items:center;justify-content:center;pointer-events:none}
+#drop-veil.show{display:flex}
+.dv-msg h3{font-family:'DM Serif Display',serif;font-size:28px;font-style:italic;color:var(--rust);text-align:center}
+.dv-msg p{font-size:9px;letter-spacing:.32em;text-transform:uppercase;color:var(--dust);text-align:center;margin-top:8px}
 </style>
 </head>
 <body>
 
+<!-- Login -->
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">Atelier</div>
@@ -135,136 +219,584 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:9000;
     <div class="login-form">
       <div class="login-label">Mot de passe</div>
       <input type="password" id="pwd-input" class="login-input" placeholder="••••••••" autocomplete="current-password">
-      <button class="login-btn" id="login-btn"><span>Entrer</span></button>
+      <button class="login-btn" id="login-btn">Entrer</button>
       <div class="login-error" id="login-error">Mot de passe incorrect</div>
     </div>
   </div>
 </div>
 
-<div id="drop-veil">
-  <div class="dv-msg"><h3>Ajouter à l'exposition</h3><p>Déposez vos photos ici</p></div>
-</div>
-
+<div id="drop-veil"><div class="dv-msg"><h3>Déposer ici</h3><p>Vos photos seront ajoutées à la palette</p></div></div>
 <div id="toast"></div>
+<input type="file" id="add-input" accept="image/*" multiple>
 
-<div id="upload-progress">
-  <div class="up-label">Upload en cours</div>
-  <div class="up-bar"><div class="up-fill" id="up-fill"></div></div>
-  <div class="up-count" id="up-count"></div>
-</div>
+<!-- Admin UI -->
+<div id="admin-ui">
 
-<div id="admin-ui" style="display:none">
-  <header class="admin-header">
-    <div style="display:flex;align-items:center;gap:16px">
-      <div class="ah-brand">Atelier — Admin</div>
-      <div class="ah-badge">● Connecté</div>
+  <!-- Header -->
+  <div class="ah">
+    <div class="ah-brand">
+      Atelier
+      <div class="ah-badge">● Éditeur</div>
     </div>
     <div class="ah-right">
-      <div class="ah-count"><span id="hdr-count">0</span> œuvres</div>
-      <button class="ah-logout" id="logout-btn">Déconnexion</button>
-    </div>
-  </header>
-
-  <div class="toolbar">
-    <div class="tb-title">Gérer l'exposition</div>
-    <div class="tb-actions">
-      <div class="save-ind" id="save-ind"><div class="sdot"></div><span id="save-msg">Sauvegardé</span></div>
-      <label class="btn btn-secondary" for="add-input"><span>+ Ajouter des photos</span></label>
-      <input type="file" id="add-input" accept="image/*" multiple>
-      <button class="btn btn-primary" id="publish-btn"><span>↑ Publier l'exposition</span></button>
-      <button class="btn btn-danger" id="clear-btn">Tout effacer</button>
+      <span class="ah-count" id="hdr-count">0 œuvres</span>
+      <div class="ah-sep"></div>
+      <button class="ah-btn" id="btn-auto">⊞ Auto-placer</button>
+      <button class="ah-btn" id="btn-clear-canvas">⊡ Vider toile</button>
+      <div class="ah-sep"></div>
+      <button class="ah-btn danger" id="btn-delete-all">Supprimer tout</button>
+      <div class="ah-sep"></div>
+      <button class="ah-btn primary" id="btn-publish">↑ Publier</button>
+      <div class="ah-sep"></div>
+      <button class="ah-btn" id="logout-btn">Déconnexion</button>
     </div>
   </div>
 
-  <div class="status-bar">
-    <div class="sb-item">Total <span class="sb-val" id="sb-total">0</span></div>
-    <div class="sb-sep"></div>
-    <div class="sb-item">Publiées <span class="sb-val" id="sb-pub">0</span></div>
-    <div class="sb-sep"></div>
-    <div class="sb-item">Dernière publication <span class="sb-val" id="sb-date">—</span></div>
-    <div class="sb-sep"></div>
-    <div class="sb-item">Ordre <span class="sb-val">Glisser pour réordonner</span></div>
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div class="sb-section">
+      <div class="sb-title">Ajouter des photos</div>
+      <label class="sb-upload" for="add-input">
+        <div class="sb-upload-icon">+</div>
+        <div class="sb-upload-txt">Cliquez ou déposez</div>
+      </label>
+      <div id="up-progress">
+        <div class="up-bar"><div class="up-fill" id="up-fill"></div></div>
+        <div class="up-txt" id="up-txt"></div>
+      </div>
+    </div>
+    <div class="sb-section">
+      <div class="sb-title">Palette — glissez sur la toile</div>
+    </div>
+    <div id="palette"><div class="pal-empty" id="pal-empty">Aucune photo</div></div>
   </div>
 
-  <div class="admin-grid" id="admin-grid"></div>
+  <!-- Éditeur -->
+  <div id="editor-wrap" id="editor-wrap">
+    <div id="editor-canvas"></div>
+  </div>
+
+  <!-- Status bar -->
+  <div id="statusbar">
+    <div class="st-item">Photos <span id="st-total">0</span></div>
+    <div class="st-sep"></div>
+    <div class="st-item">Sur toile <span id="st-placed">0</span></div>
+    <div class="st-sep"></div>
+    <div class="st-item">Sélection <span id="st-sel">—</span></div>
+    <div class="st-sep"></div>
+    <div class="zoom-ctrl">
+      <button class="zoom-btn" id="btn-zoom-out">−</button>
+      <div class="st-item"><span id="zoom-val">100%</span></div>
+      <button class="zoom-btn" id="btn-zoom-in">+</button>
+      <button class="zoom-btn" id="btn-zoom-fit" title="Tout voir" style="width:auto;padding:0 6px;font-size:9px">Fit</button>
+    </div>
+    <div class="st-hint">Drag pour déplacer · Poignées pour redimensionner · Espace+drag pour panner · Suppr pour retirer</div>
+  </div>
+
 </div>
 
 <script>
 'use strict';
 
-/* ── CONFIG ── */
-const API = ''; // vide = même domaine, ou mettez https://votre-app.onrender.com
-
-// Cloudinary Free limite "hard" ~10MB/image → on compresse au-delà
-const CLD_LIMIT_MB = 10;
-const CLD_LIMIT_BYTES = CLD_LIMIT_MB * 1024 * 1024;
-
-// Paramètres demandés
-const JPEG_QUALITY = 0.85;
-const MAX_SIDE = 3200;
-
-/* ── TOKEN JWT ── */
+const API = '';
 let token = localStorage.getItem('atelier-token') || null;
+const authH = () => ({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` });
 
-function authHeaders() {
-  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-}
-
-/* ── INIT ── */
-(async () => {
-  if (token) {
-    try {
-      const r = await fetch(`${API}/api/admin/photos`, { headers: authHeaders() });
-      if (r.ok) { showAdmin(await r.json()); return; }
-    } catch(e) {}
-    localStorage.removeItem('atelier-token');
-    token = null;
-  }
-})();
-
-/* ── LOGIN ── */
+/* ══════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════ */
 document.getElementById('login-btn').addEventListener('click', doLogin);
-document.getElementById('pwd-input').addEventListener('keydown', e => { if(e.key==='Enter') doLogin(); });
+document.getElementById('pwd-input').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 
 async function doLogin() {
   const pwd = document.getElementById('pwd-input').value;
   try {
-    const r = await fetch(`${API}/api/auth/login`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ password: pwd })
-    });
+    const r = await fetch(`${API}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pwd }) });
     if (!r.ok) throw new Error();
-    const { token: t } = await r.json();
-    token = t;
-    localStorage.setItem('atelier-token', t);
-    const photos = await (await fetch(`${API}/api/admin/photos`, { headers: authHeaders() })).json();
-    showAdmin(photos);
+    token = (await r.json()).token;
+    localStorage.setItem('atelier-token', token);
+    await loadAdmin();
   } catch(e) {
-    const err = document.getElementById('login-error');
-    err.classList.add('show');
+    const el = document.getElementById('login-error');
+    el.classList.add('show');
     document.getElementById('pwd-input').value = '';
-    setTimeout(() => err.classList.remove('show'), 2500);
+    setTimeout(() => el.classList.remove('show'), 2500);
   }
 }
+document.getElementById('logout-btn').addEventListener('click', () => { localStorage.removeItem('atelier-token'); location.reload(); });
 
-document.getElementById('logout-btn').addEventListener('click', () => {
-  localStorage.removeItem('atelier-token');
-  location.reload();
-});
+/* ══════════════════════════════════════════
+   ÉTAT
+══════════════════════════════════════════ */
+let photos = [];       // toutes les photos (avec layout x,y,w,h ou sans)
+let cards  = new Map(); // id → DOM element carte éditeur
 
-/* ── ÉTAT ── */
-let photos = [];
+// Viewport de la toile
+let zoom   = 0.5;      // zoom actuel
+let panX   = 60;       // pan X (pixels écran)
+let panY   = 60;       // pan Y
+const SNAP = 10;       // grille de snap (pixels canvas)
 
-function showAdmin(data) {
+// Interaction en cours
+let mode        = 'select';  // 'select' | 'pan'
+let spaceDown   = false;
+let draggingCard= null;
+let resizingCard= null;
+let resizeDir   = '';
+let interactStart = null;    // {mx,my,ox,oy,ow,oh} au début d'une interaction
+
+/* ══════════════════════════════════════════
+   LOAD
+══════════════════════════════════════════ */
+async function loadAdmin() {
   document.getElementById('login-screen').classList.add('gone');
-  document.getElementById('admin-ui').style.display = 'block';
-  photos = data.sort((a,b) => a.order - b.order);
-  renderGrid();
-  updateStats();
+  document.getElementById('admin-ui').classList.add('show');
+  try {
+    const r = await fetch(`${API}/api/admin/photos`, { headers: authH() });
+    if (!r.ok) throw new Error();
+    photos = await r.json();
+  } catch(e) { photos = []; }
+  rebuildAll();
 }
 
-/* ── UPLOAD DIRECT NAVIGATEUR → CLOUDINARY ── */
+(async () => {
+  if (!token) return;
+  try {
+    const r = await fetch(`${API}/api/admin/photos`, { headers: authH() });
+    if (r.ok) { photos = await r.json(); document.getElementById('login-screen').classList.add('gone'); document.getElementById('admin-ui').classList.add('show'); rebuildAll(); }
+    else { localStorage.removeItem('atelier-token'); token = null; }
+  } catch(e) {}
+})();
+
+/* ══════════════════════════════════════════
+   REBUILD — palette + toile
+══════════════════════════════════════════ */
+function rebuildAll() {
+  buildPalette();
+  buildCanvas();
+  updateStatus();
+}
+
+/* ══════════════════════════════════════════
+   PALETTE (sidebar)
+══════════════════════════════════════════ */
+function buildPalette() {
+  const pal = document.getElementById('palette');
+  const empty = document.getElementById('pal-empty');
+  pal.querySelectorAll('.pal-item').forEach(el => el.remove());
+  if (!photos.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  photos.forEach(p => {
+    const item = document.createElement('div');
+    item.className = 'pal-item' + (p.layout ? ' placed' : '');
+    item.dataset.id = p.id;
+    item.draggable = true;
+    item.innerHTML = `
+      <img class="pal-thumb" src="${p.thumbUrl||p.url}" alt="${p.name}" crossorigin="anonymous">
+      <div class="pal-info">
+        <div class="pal-name">${p.name}</div>
+        <div class="pal-dims">${p.w}×${p.h}</div>
+      </div>
+      <button class="pal-del" data-id="${p.id}" title="Supprimer">×</button>`;
+
+    // Drag depuis palette → toile
+    item.addEventListener('dragstart', e => {
+      e.dataTransfer.setData('photoId', p.id);
+      e.dataTransfer.effectAllowed = 'copy';
+    });
+
+    // Supprimer
+    item.querySelector('.pal-del').addEventListener('click', async e => {
+      e.stopPropagation();
+      if (!confirm(`Supprimer "${p.name}" définitivement ?`)) return;
+      await fetch(`${API}/api/admin/photos/${p.id}`, { method: 'DELETE', headers: authH() });
+      photos = photos.filter(x => x.id !== p.id);
+      cards.get(p.id)?.remove();
+      cards.delete(p.id);
+      rebuildAll();
+    });
+
+    pal.appendChild(item);
+  });
+}
+
+/* ══════════════════════════════════════════
+   CANVAS — construction
+══════════════════════════════════════════ */
+const EC = document.getElementById('editor-canvas');
+
+function buildCanvas() {
+  // Supprimer les cartes qui n'existent plus
+  cards.forEach((el, id) => { if (!photos.find(p => p.id === id)) { el.remove(); cards.delete(id); } });
+
+  photos.forEach(p => {
+    if (!p.layout) return; // pas encore placée
+    if (cards.has(p.id)) {
+      // Mettre à jour position/taille
+      updateCardDOM(p);
+    } else {
+      createCardDOM(p);
+    }
+  });
+}
+
+function createCardDOM(p) {
+  const card = document.createElement('div');
+  card.className = 'ec-card';
+  card.dataset.id = p.id;
+  card.innerHTML = `
+    <div class="ec-frame"><img src="${p.url}" alt="${p.name}" crossorigin="anonymous" draggable="false"></div>
+    <div class="ec-badge">${p.name}</div>
+    <div class="ec-handle nw" data-dir="nw"></div>
+    <div class="ec-handle ne" data-dir="ne"></div>
+    <div class="ec-handle sw" data-dir="sw"></div>
+    <div class="ec-handle se" data-dir="se"></div>
+    <div class="ec-handle n"  data-dir="n"></div>
+    <div class="ec-handle s"  data-dir="s"></div>
+    <div class="ec-handle w"  data-dir="w"></div>
+    <div class="ec-handle e"  data-dir="e"></div>`;
+
+  updateCardDOM(p, card);
+  bindCardEvents(card, p);
+  EC.appendChild(card);
+  cards.set(p.id, card);
+}
+
+function updateCardDOM(p, card) {
+  const el = card || cards.get(p.id);
+  if (!el || !p.layout) return;
+  el.style.left   = p.layout.x + 'px';
+  el.style.top    = p.layout.y + 'px';
+  el.style.width  = p.layout.w + 'px';
+  el.style.height = p.layout.h + 'px';
+}
+
+/* ══════════════════════════════════════════
+   VIEWPORT — zoom & pan
+══════════════════════════════════════════ */
+function applyViewport() {
+  EC.style.transform = `translate(${Math.round(panX)}px,${Math.round(panY)}px) scale(${zoom})`;
+  document.getElementById('zoom-val').textContent = Math.round(zoom * 100) + '%';
+}
+applyViewport();
+
+// Zoom boutons
+document.getElementById('btn-zoom-in').addEventListener('click', () => { zoom = Math.min(2, zoom + 0.1); applyViewport(); });
+document.getElementById('btn-zoom-out').addEventListener('click', () => { zoom = Math.max(0.15, zoom - 0.1); applyViewport(); });
+document.getElementById('btn-zoom-fit').addEventListener('click', fitAll);
+
+function fitAll() {
+  const placed = photos.filter(p => p.layout);
+  if (!placed.length) return;
+  const wrap = document.getElementById('editor-wrap');
+  const ww = wrap.offsetWidth, wh = wrap.offsetHeight;
+  const minX = Math.min(...placed.map(p => p.layout.x));
+  const minY = Math.min(...placed.map(p => p.layout.y));
+  const maxX = Math.max(...placed.map(p => p.layout.x + p.layout.w));
+  const maxY = Math.max(...placed.map(p => p.layout.y + p.layout.h));
+  const bw = maxX - minX + 120, bh = maxY - minY + 120;
+  zoom = Math.min(0.95, Math.min(ww / bw, wh / bh));
+  panX = (ww - bw * zoom) / 2 - minX * zoom + 60 * zoom;
+  panY = (wh - bh * zoom) / 2 - minY * zoom + 60 * zoom;
+  applyViewport();
+}
+
+// Zoom molette
+document.getElementById('editor-wrap').addEventListener('wheel', e => {
+  e.preventDefault();
+  const wrap = document.getElementById('editor-wrap');
+  const rect = wrap.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const delta = e.deltaY > 0 ? -0.08 : 0.08;
+  const newZoom = Math.max(0.15, Math.min(2, zoom + delta));
+  panX = mx - (mx - panX) * (newZoom / zoom);
+  panY = my - (my - panY) * (newZoom / zoom);
+  zoom = newZoom;
+  applyViewport();
+}, { passive: false });
+
+/* ══════════════════════════════════════════
+   PAN de la toile (Espace + drag, ou drag milieu)
+══════════════════════════════════════════ */
+let panStart = null;
+document.addEventListener('keydown', e => {
+  if (e.code === 'Space' && !e.target.closest('input')) { spaceDown = true; document.getElementById('editor-wrap').style.cursor = 'grab'; e.preventDefault(); }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    const sel = document.querySelector('.ec-card.selected');
+    if (sel && !e.target.closest('input')) { removeFromCanvas(sel.dataset.id); }
+  }
+  if (e.key === 'Escape') document.querySelectorAll('.ec-card.selected').forEach(c => c.classList.remove('selected'));
+});
+document.addEventListener('keyup', e => {
+  if (e.code === 'Space') { spaceDown = false; document.getElementById('editor-wrap').style.cursor = 'default'; }
+});
+
+const edWrap = document.getElementById('editor-wrap');
+edWrap.addEventListener('mousedown', e => {
+  if (spaceDown || e.button === 1) {
+    panStart = { mx: e.clientX, my: e.clientY, px: panX, py: panY };
+    edWrap.style.cursor = 'grabbing';
+  } else if (e.target === edWrap || e.target === EC) {
+    // Clic sur fond → désélectionner
+    document.querySelectorAll('.ec-card.selected').forEach(c => c.classList.remove('selected'));
+    updateStatus();
+  }
+});
+document.addEventListener('mousemove', e => {
+  if (panStart) {
+    panX = panStart.px + (e.clientX - panStart.mx);
+    panY = panStart.py + (e.clientY - panStart.my);
+    applyViewport();
+  }
+});
+document.addEventListener('mouseup', () => {
+  panStart = null;
+  if (!spaceDown) edWrap.style.cursor = 'default';
+});
+
+/* ══════════════════════════════════════════
+   DROP depuis palette
+══════════════════════════════════════════ */
+edWrap.addEventListener('dragover', e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
+edWrap.addEventListener('drop', e => {
+  e.preventDefault();
+  const id = e.dataTransfer.getData('photoId');
+  if (!id) return;
+  const p = photos.find(x => x.id === id);
+  if (!p) return;
+
+  const rect = edWrap.getBoundingClientRect();
+  // Convertir position écran → position canvas
+  const cx = (e.clientX - rect.left - panX) / zoom;
+  const cy = (e.clientY - rect.top  - panY) / zoom;
+
+  // Taille par défaut : 380px de large, hauteur proportionnelle
+  const defW = 380;
+  const defH = Math.round(defW / (p.ratio || (p.w / p.h) || 1.5));
+
+  p.layout = {
+    x: snap(cx - defW / 2),
+    y: snap(cy - defH / 2),
+    w: defW,
+    h: defH,
+  };
+
+  if (cards.has(id)) updateCardDOM(p);
+  else createCardDOM(p);
+
+  // Marquer comme placée dans la palette
+  const palItem = document.querySelector(`.pal-item[data-id="${id}"]`);
+  if (palItem) palItem.classList.add('placed');
+  updateStatus();
+  autoSaveLayout();
+});
+
+/* ══════════════════════════════════════════
+   ÉVÉNEMENTS CARTE — déplacement + resize
+══════════════════════════════════════════ */
+function bindCardEvents(card, p) {
+  // Sélection
+  card.addEventListener('mousedown', e => {
+    if (spaceDown || panStart) return;
+    e.stopPropagation();
+    document.querySelectorAll('.ec-card.selected').forEach(c => { if (c !== card) c.classList.remove('selected'); });
+    card.classList.add('selected');
+    updateStatus();
+
+    const handle = e.target.closest('.ec-handle');
+    if (handle) {
+      // Resize
+      resizingCard = card;
+      resizeDir = handle.dataset.dir;
+      interactStart = {
+        mx: e.clientX, my: e.clientY,
+        ox: p.layout.x, oy: p.layout.y,
+        ow: p.layout.w, oh: p.layout.h,
+      };
+      e.preventDefault();
+    } else {
+      // Drag déplacement
+      draggingCard = card;
+      interactStart = {
+        mx: e.clientX, my: e.clientY,
+        ox: p.layout.x, oy: p.layout.y,
+      };
+    }
+  });
+}
+
+document.addEventListener('mousemove', e => {
+  if (panStart) return;
+
+  if (draggingCard) {
+    const p = photos.find(x => x.id === draggingCard.dataset.id);
+    if (!p || !p.layout) return;
+    const dx = (e.clientX - interactStart.mx) / zoom;
+    const dy = (e.clientY - interactStart.my) / zoom;
+    p.layout.x = snap(interactStart.ox + dx);
+    p.layout.y = snap(interactStart.oy + dy);
+    updateCardDOM(p);
+    updateStatus();
+  }
+
+  if (resizingCard) {
+    const p = photos.find(x => x.id === resizingCard.dataset.id);
+    if (!p || !p.layout) return;
+    const dx = (e.clientX - interactStart.mx) / zoom;
+    const dy = (e.clientY - interactStart.my) / zoom;
+    const MIN = 80;
+    let { ox, oy, ow, oh } = interactStart;
+    let nx = ox, ny = oy, nw = ow, nh = oh;
+
+    if (resizeDir.includes('e')) nw = Math.max(MIN, snap(ow + dx));
+    if (resizeDir.includes('s')) nh = Math.max(MIN, snap(oh + dy));
+    if (resizeDir.includes('w')) { nw = Math.max(MIN, snap(ow - dx)); nx = ox + ow - nw; }
+    if (resizeDir.includes('n')) { nh = Math.max(MIN, snap(oh - dy)); ny = oy + oh - nh; }
+
+    p.layout = { ...p.layout, x: nx, y: ny, w: nw, h: nh };
+    updateCardDOM(p);
+    updateStatus();
+  }
+});
+
+document.addEventListener('mouseup', () => {
+  if (draggingCard || resizingCard) {
+    autoSaveLayout();
+  }
+  draggingCard = null;
+  resizingCard = null;
+  interactStart = null;
+});
+
+/* ══════════════════════════════════════════
+   RETIRER DE LA TOILE (Suppr)
+══════════════════════════════════════════ */
+function removeFromCanvas(id) {
+  const p = photos.find(x => x.id === id);
+  if (!p) return;
+  p.layout = null;
+  cards.get(id)?.remove();
+  cards.delete(id);
+  const palItem = document.querySelector(`.pal-item[data-id="${id}"]`);
+  if (palItem) palItem.classList.remove('placed');
+  updateStatus();
+  autoSaveLayout();
+}
+
+/* ══════════════════════════════════════════
+   AUTO-PLACER (disposition automatique)
+══════════════════════════════════════════ */
+document.getElementById('btn-auto').addEventListener('click', () => {
+  if (!photos.length) return;
+  autoLayout();
+  rebuildAll();
+  autoSaveLayout();
+  fitAll();
+  showToast('Disposition automatique appliquée');
+});
+
+function autoLayout() {
+  const VW = 1600; // toile virtuelle de référence
+  const VH = 900;
+  let x = 80, y = 80;
+  let rowH = 0;
+  const PAD = 40;
+
+  photos.forEach((p, i) => {
+    const baseW = p.orient === 'land' ? 520 : p.orient === 'port' ? 280 : 360;
+    const baseH = Math.round(baseW / (p.ratio || 1.5));
+
+    // Variation organique
+    const scale = 0.8 + (Math.sin(i * 2.3) * 0.5 + 0.5) * 0.5;
+    const w = Math.round(baseW * scale);
+    const h = Math.round(baseH * scale);
+
+    // Retour à la ligne si débordement
+    if (x + w > VW - 80 && i > 0) {
+      x = 80 + Math.round(Math.random() * 120);
+      y += rowH + PAD + Math.round(Math.random() * 60);
+      rowH = 0;
+    }
+
+    // Offset vertical aléatoire par rangée
+    const vy = y + Math.round((Math.random() - 0.5) * h * 0.3);
+
+    p.layout = { x: snap(x), y: snap(vy), w, h };
+    x += w + PAD + Math.round(Math.random() * 40);
+    rowH = Math.max(rowH, h);
+  });
+}
+
+/* ══════════════════════════════════════════
+   VIDER LA TOILE
+══════════════════════════════════════════ */
+document.getElementById('btn-clear-canvas').addEventListener('click', () => {
+  if (!confirm('Retirer toutes les photos de la toile ? (Elles resteront dans la palette)')) return;
+  photos.forEach(p => { p.layout = null; });
+  cards.forEach(el => el.remove());
+  cards.clear();
+  document.querySelectorAll('.pal-item').forEach(el => el.classList.remove('placed'));
+  updateStatus();
+  autoSaveLayout();
+  showToast('Toile vidée');
+});
+
+/* ══════════════════════════════════════════
+   SUPPRIMER TOUT
+══════════════════════════════════════════ */
+document.getElementById('btn-delete-all').addEventListener('click', async () => {
+  if (!confirm('Supprimer TOUTES les photos définitivement ?')) return;
+  await fetch(`${API}/api/admin/photos`, { method: 'DELETE', headers: authH() });
+  photos = [];
+  cards.forEach(el => el.remove());
+  cards.clear();
+  rebuildAll();
+  showToast('Tout supprimé');
+});
+
+/* ══════════════════════════════════════════
+   PUBLIER
+══════════════════════════════════════════ */
+document.getElementById('btn-publish').addEventListener('click', async () => {
+  const placed = photos.filter(p => p.layout);
+  if (!placed.length) { showToast('Aucune photo sur la toile'); return; }
+  try {
+    const r = await fetch(`${API}/api/admin/publish`, {
+      method: 'POST', headers: authH(),
+      body: JSON.stringify({ ids: placed.map(p => p.id) }),
+    });
+    if (!r.ok) throw new Error();
+    showToast(`✓ ${placed.length} œuvres publiées`);
+  } catch(e) { showToast('Erreur publication'); }
+});
+
+/* ══════════════════════════════════════════
+   SAUVEGARDE LAYOUT (positions)
+   Appel debounced après chaque interaction
+══════════════════════════════════════════ */
+let saveTimer;
+function autoSaveLayout() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveLayout, 800);
+}
+
+async function saveLayout() {
+  const payload = photos
+    .filter(p => p.layout)
+    .map(p => ({ id: p.id, layout: p.layout }));
+
+  try {
+    await fetch(`${API}/api/admin/layout`, {
+      method: 'POST', headers: authH(),
+      body: JSON.stringify({ layout: payload }),
+    });
+  } catch(e) { console.warn('Layout save failed:', String(e)); }
+}
+
+/* ══════════════════════════════════════════
+   UPLOAD DIRECT → CLOUDINARY
+══════════════════════════════════════════ */
 document.getElementById('add-input').addEventListener('change', e => {
   uploadFiles(e.target.files); e.target.value = '';
 });
@@ -272,288 +804,105 @@ document.getElementById('add-input').addEventListener('change', e => {
 async function uploadFiles(files) {
   const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
   if (!arr.length) return;
-
-  const prog  = document.getElementById('upload-progress');
-  const fill  = document.getElementById('up-fill');
-  const count = document.getElementById('up-count');
+  const prog = document.getElementById('up-progress');
+  const fill = document.getElementById('up-fill');
+  const txt  = document.getElementById('up-txt');
   prog.classList.add('show');
-
   let done = 0;
-  count.textContent = `0 / ${arr.length}`;
-  fill.style.width = '0%';
 
-  for (const originalFile of arr) {
+  for (const file of arr) {
+    txt.textContent = `${done + 1} / ${arr.length} — ${file.name}`;
+    fill.style.width = '5%';
     try {
-      count.textContent = `${done + 1} / ${arr.length} — ${originalFile.name}`;
-
-      // 0) Compresser si > 10MB (Cloudinary Free)
-      let file = originalFile;
-      if (file.size > CLD_LIMIT_BYTES) {
-        showToast(`Compression : ${originalFile.name} (> ${CLD_LIMIT_MB}MB) → JPEG ${Math.round(JPEG_QUALITY*100)}% / max ${MAX_SIDE}px`);
-        file = await compressToJpeg(originalFile, { quality: JPEG_QUALITY, maxSide: MAX_SIDE });
-        if (!file || !file.size) throw new Error('Compression impossible');
-
-        // Si toujours trop gros, on tente une seconde passe (qualité un peu plus basse)
-        if (file.size > CLD_LIMIT_BYTES) {
-          file = await compressToJpeg(originalFile, { quality: Math.max(0.75, JPEG_QUALITY - 0.10), maxSide: MAX_SIDE });
-        }
-        if (file.size > CLD_LIMIT_BYTES) {
-          throw new Error(`Image encore trop lourde après compression (${(file.size/1024/1024).toFixed(1)}MB). Réduisez la résolution ou passez Cloudinary Plus.`);
-        }
-      }
-
-      // 1) Signature serveur
-      const sigRes = await fetch(`${API}/api/admin/sign`, { headers: authHeaders(), cache: 'no-store' });
-      if (!sigRes.ok) throw new Error('Signature refusée : ' + await sigRes.text());
+      // 1. Signature
+      const sigRes = await fetch(`${API}/api/admin/sign`, { headers: authH() });
+      if (!sigRes.ok) throw new Error('Signature refusée');
       const sig = await sigRes.json();
 
-      // 2) Upload direct Cloudinary (XHR pour progress)
-      const cloudinaryOut = await new Promise((resolve, reject) => {
+      // 2. Upload Cloudinary avec progression
+      await new Promise((resolve, reject) => {
         const form = new FormData();
-        form.append('file',       file);
-        form.append('api_key',    sig.api_key);
-        form.append('timestamp',  sig.timestamp);
-        form.append('signature',  sig.signature);
-        form.append('folder',     sig.folder);
-        form.append('public_id',  sig.public_id);
-
+        form.append('file', file);
+        form.append('api_key', sig.api_key);
+        form.append('timestamp', sig.timestamp);
+        form.append('signature', sig.signature);
+        form.append('folder', sig.folder);
+        form.append('public_id', sig.public_id);
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `https://api.cloudinary.com/v1_1/${sig.cloud_name}/image/upload`);
-
-        xhr.upload.onprogress = (e) => {
-          if (e.lengthComputable) {
-            const fileProgress = (done / arr.length + (e.loaded / e.total) / arr.length) * 100;
-            fill.style.width = Math.round(fileProgress) + '%';
-          }
+        xhr.upload.onprogress = e => {
+          if (e.lengthComputable) fill.style.width = Math.round((done / arr.length + (e.loaded / e.total) / arr.length) * 100) + '%';
         };
-
-        xhr.onload = () => {
-          if (xhr.status >= 200 && xhr.status < 300) resolve(JSON.parse(xhr.responseText));
-          else reject(new Error('Cloudinary error ' + xhr.status + ' : ' + xhr.responseText));
-        };
-        xhr.onerror = () => reject(new Error('Erreur réseau'));
+        xhr.onload = () => xhr.status < 300 ? resolve(JSON.parse(xhr.responseText)) : reject(new Error('Upload Cloudinary ' + xhr.status));
+        xhr.onerror = () => reject(new Error('Réseau'));
         xhr.send(form);
       });
 
-      // 3) Register côté serveur
-      // Dimensions : on préfère celles renvoyées par Cloudinary (fiables)
-      const regRes = await fetch(`${API}/api/admin/photos/register`, {
-        method:  'POST',
-        headers: authHeaders(),
-        body:    JSON.stringify({
-          cloudinaryId: sig.folder + '/' + sig.public_id,
-          originalName: originalFile.name,
-          w:            cloudinaryOut.width || 0,
-          h:            cloudinaryOut.height || 0,
-        }),
+      // 3. Dimensions locales
+      const dims = await new Promise(res => {
+        const url = URL.createObjectURL(file); const img = new Image();
+        img.onload  = () => { URL.revokeObjectURL(url); res({ w: img.naturalWidth, h: img.naturalHeight }); };
+        img.onerror = () => { URL.revokeObjectURL(url); res({ w: 0, h: 0 }); };
+        img.src = url;
       });
-      if (!regRes.ok) throw new Error('Register error : ' + await regRes.text());
-      const photo = await regRes.json();
 
-      photos.push(photo);
-      renderGrid();
-      updateStats();
+      // 4. Enregistrer
+      const regRes = await fetch(`${API}/api/admin/photos/register`, {
+        method: 'POST', headers: authH(),
+        body: JSON.stringify({ cloudinaryId: sig.folder + '/' + sig.public_id, originalName: file.name, w: dims.w, h: dims.h }),
+      });
+      if (!regRes.ok) throw new Error('Enregistrement');
+      const newPhoto = await regRes.json();
+      photos.push(newPhoto);
       done++;
       fill.style.width = Math.round((done / arr.length) * 100) + '%';
-
-    } catch(e) {
-      console.error('Upload error:', e);
-      showToast('Erreur : ' + e.message);
-    }
+      buildPalette();
+      updateStatus();
+    } catch(e) { showToast('Erreur : ' + e.message); }
   }
 
-  showSave(`${done} photo${done > 1 ? 's' : ''} ajoutée${done > 1 ? 's' : ''}`);
-  setTimeout(() => { prog.classList.remove('show'); fill.style.width = '0'; }, 900);
+  showToast(`${done} photo${done > 1 ? 's' : ''} ajoutée${done > 1 ? 's' : ''} — glissez sur la toile`);
+  setTimeout(() => { prog.classList.remove('show'); fill.style.width = '0'; }, 1000);
 }
 
-/* ── Compression JPEG (qualité 0.85, max 3200px) ── */
-async function compressToJpeg(file, { quality = 0.85, maxSide = 3200 } = {}) {
-  const bmp = await fileToImageBitmap(file);
-  const { width, height } = fitInside(bmp.width, bmp.height, maxSide);
-
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-
-  const ctx = canvas.getContext('2d', { alpha: false, desynchronized: true });
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(bmp, 0, 0, width, height);
-
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
-  if (!blob) return null;
-
-  const base = file.name.replace(/\.[^.]+$/, '');
-  return new File([blob], `${base}.jpg`, { type: 'image/jpeg' });
-}
-
-async function fileToImageBitmap(file) {
-  // createImageBitmap est le plus rapide, fallback <img> sinon
-  if ('createImageBitmap' in window) {
-    try { return await createImageBitmap(file); } catch(e) {}
-  }
-  const url = URL.createObjectURL(file);
-  try {
-    const img = await new Promise((resolve, reject) => {
-      const i = new Image();
-      i.onload = () => resolve(i);
-      i.onerror = reject;
-      i.src = url;
-    });
-    const canvas = document.createElement('canvas');
-    canvas.width = img.naturalWidth || img.width;
-    canvas.height = img.naturalHeight || img.height;
-    const ctx = canvas.getContext('2d', { alpha: false });
-    ctx.drawImage(img, 0, 0);
-    // Convertit en bitmap-like
-    return { width: canvas.width, height: canvas.height, _canvas: canvas };
-  } finally {
-    URL.revokeObjectURL(url);
-  }
-}
-
-function fitInside(w, h, maxSide) {
-  if (!maxSide || (w <= maxSide && h <= maxSide)) return { width: w, height: h };
-  const scale = maxSide / Math.max(w, h);
-  return { width: Math.round(w * scale), height: Math.round(h * scale) };
-}
-
-/* ── DRAG & DROP GLOBAL ── */
-const dv = document.getElementById('drop-veil'); let dn=0;
-document.addEventListener('dragenter', e => { if(!e.dataTransfer.types.includes('text/plain')){e.preventDefault();dn++;dv.classList.add('show');} });
-document.addEventListener('dragleave', () => { dn--;if(dn<=0){dn=0;dv.classList.remove('show');} });
-document.addEventListener('dragover',  e => e.preventDefault());
+/* ══════════════════════════════════════════
+   DRAG & DROP GLOBAL
+══════════════════════════════════════════ */
+const dv = document.getElementById('drop-veil'); let dn = 0;
+document.addEventListener('dragenter', e => {
+  if (e.dataTransfer.types.includes('Files') && !e.dataTransfer.types.includes('text/plain')) { e.preventDefault(); dn++; dv.classList.add('show'); }
+});
+document.addEventListener('dragleave', () => { dn--; if (dn <= 0) { dn = 0; dv.classList.remove('show'); } });
+document.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
 document.addEventListener('drop', e => {
-  e.preventDefault(); dn=0; dv.classList.remove('show');
-  if(e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
+  e.preventDefault(); dn = 0; dv.classList.remove('show');
+  if (e.dataTransfer.files.length && !e.target.closest('#editor-wrap')) uploadFiles(e.dataTransfer.files);
 });
 
-/* ── GRID ── */
-function renderGrid() {
-  const grid = document.getElementById('admin-grid');
-  document.getElementById('hdr-count').textContent = photos.length;
+/* ══════════════════════════════════════════
+   UTILS
+══════════════════════════════════════════ */
+function snap(v) { return Math.round(v / SNAP) * SNAP; }
 
-  if (!photos.length) {
-    grid.innerHTML = `<div class="admin-empty">
-      <div class="ae-icon">∅</div>
-      <div class="ae-title">Aucune photo — ajoutez vos œuvres ci-dessus</div>
-    </div>`;
-    return;
+function updateStatus() {
+  const placed = photos.filter(p => p.layout).length;
+  document.getElementById('st-total').textContent  = photos.length;
+  document.getElementById('st-placed').textContent = placed;
+  document.getElementById('hdr-count').textContent = photos.length + ' œuvres';
+  const sel = document.querySelector('.ec-card.selected');
+  if (sel) {
+    const p = photos.find(x => x.id === sel.dataset.id);
+    document.getElementById('st-sel').textContent = p ? `${p.name} — ${p.layout?.w|0}×${p.layout?.h|0}px` : '—';
+  } else {
+    document.getElementById('st-sel').textContent = '—';
   }
-
-  grid.innerHTML = '';
-  photos.forEach((photo, i) => {
-    const card = document.createElement('div');
-    card.className = 'photo-card';
-    card.draggable = true;
-    card.dataset.id = photo.id;
-
-    // photo.url / photo.thumbUrl sont déjà des URLs Cloudinary complètes
-    const imgSrc = photo.thumbUrl || photo.url;
-
-    card.innerHTML = `
-      <div class="card-drag-handle"><span></span><span></span><span></span></div>
-      <div class="card-img-wrap"><img src="${imgSrc}" alt="${photo.name}" loading="lazy"></div>
-      <div class="card-body">
-        <input class="card-name-input" type="text" value="${photo.name}" data-id="${photo.id}">
-        <div class="card-meta">
-          <span class="card-dims">${photo.w}×${photo.h} · ${photo.orient}</span>
-          <div style="display:flex;align-items:center;gap:8px">
-            ${photo.published ? '<span class="card-published">Publié</span>' : ''}
-            <span class="card-order">${String(i+1).padStart(2,'0')}</span>
-          </div>
-        </div>
-      </div>
-      <button class="card-delete" data-id="${photo.id}">
-        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>`;
-
-    // Renommer
-    card.querySelector('.card-name-input').addEventListener('change', async e => {
-      const p = photos.find(x => x.id === e.target.dataset.id);
-      if (!p) return;
-      p.name = e.target.value;
-      await fetch(`${API}/api/admin/photos/${p.id}`, {
-        method:  'PUT',
-        headers: authHeaders(),
-        body:    JSON.stringify({ name: p.name })
-      });
-      showSave('Nom mis à jour');
-    });
-
-    // Supprimer
-    card.querySelector('.card-delete').addEventListener('click', async e => {
-      const id = e.currentTarget.dataset.id;
-      if (!confirm('Retirer cette photo ?')) return;
-      await fetch(`${API}/api/admin/photos/${id}`, { method: 'DELETE', headers: authHeaders() });
-      photos = photos.filter(x => x.id !== id);
-      renderGrid(); updateStats();
-    });
-
-    setupDrag(card);
-    grid.appendChild(card);
-  });
 }
 
-/* ── DRAG-TO-REORDER ── */
-let dragSrc = null;
-function setupDrag(card) {
-  card.addEventListener('dragstart', e => {
-    if(e.target.tagName==='INPUT'){e.preventDefault();return;}
-    dragSrc=card; card.classList.add('dragging');
-    e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',card.dataset.id);
-  });
-  card.addEventListener('dragend',  () => { card.classList.remove('dragging'); document.querySelectorAll('.photo-card').forEach(c=>c.classList.remove('drag-over')); });
-  card.addEventListener('dragover', e => { if(e.dataTransfer.types.includes('text/plain')){e.preventDefault();card.classList.add('drag-over');} });
-  card.addEventListener('dragleave',() => card.classList.remove('drag-over'));
-  card.addEventListener('drop', async e => {
-    e.preventDefault(); e.stopPropagation(); card.classList.remove('drag-over');
-    if(dragSrc && dragSrc!==card){
-      const si=photos.findIndex(p=>p.id===dragSrc.dataset.id), di=photos.findIndex(p=>p.id===card.dataset.id);
-      if(si!==-1&&di!==-1){ const [m]=photos.splice(si,1); photos.splice(di,0,m); }
-      renderGrid(); updateStats();
-      await fetch(`${API}/api/admin/reorder`, { method:'POST', headers:authHeaders(), body:JSON.stringify({ids:photos.map(p=>p.id)}) });
-      showSave('Ordre sauvegardé');
-    }
-  });
-}
-
-/* ── PUBLISH ── */
-document.getElementById('publish-btn').addEventListener('click', async () => {
-  if(!photos.length){ showToast('Aucune photo à publier'); return; }
-  const r = await fetch(`${API}/api/admin/publish`, {
-    method:  'POST',
-    headers: authHeaders(),
-    body:    JSON.stringify({ ids: photos.map(p => p.id) })
-  });
-  const { published } = await r.json();
-  photos.forEach(p => p.published = true);
-  renderGrid(); updateStats();
-  const now = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric',hour:'2-digit',minute:'2-digit'});
-  document.getElementById('sb-date').textContent = now;
-  showToast(`✓ ${published} œuvres publiées et visibles en ligne`);
-  showSave('Publié ✓');
-});
-
-/* ── CLEAR ── */
-document.getElementById('clear-btn').addEventListener('click', async () => {
-  if(!confirm('Effacer toutes les photos du serveur ?')) return;
-  await fetch(`${API}/api/admin/photos`, { method:'DELETE', headers:authHeaders() });
-  photos = []; renderGrid(); updateStats();
-  showToast('Exposition vidée');
-});
-
-/* ── STATS ── */
-function updateStats(){
-  document.getElementById('sb-total').textContent = photos.length;
-  document.getElementById('sb-pub').textContent   = photos.filter(p=>p.published).length;
-  document.getElementById('hdr-count').textContent = photos.length;
-}
-
-/* ── UTILS ── */
 let toastTimer;
-function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),3500); }
-function showSave(msg){ const el=document.getElementById('save-ind'); document.getElementById('save-msg').textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),2500); }
+function showToast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+}
 </script>
 </body>
 </html>

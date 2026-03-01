@@ -197,6 +197,7 @@ app.get('/api/photos', async (req, res) => {
     res.json(photos.map(p => ({
       id: p.id, url: cldUrl(p.cloudinaryId), name: p.name,
       w: p.w, h: p.h, orient: p.orient, ratio: p.ratio, order: p.order,
+      layout: p.layout || null,
     })));
   } catch(e) { res.status(500).json({ error: String(e) }); }
 });
@@ -211,6 +212,7 @@ app.get('/api/admin/photos', requireAuth, async (req, res) => {
       name: p.name, w: p.w, h: p.h, orient: p.orient, ratio: p.ratio,
       order: p.order, published: p.published, createdAt: p.createdAt,
       cloudinaryId: p.cloudinaryId,
+      layout: p.layout || null,
     })));
   } catch(e) { res.status(500).json({ error: String(e) }); }
 });
@@ -278,6 +280,22 @@ app.delete('/api/admin/photos', requireAuth, async (req, res) => {
     await Promise.allSettled(db.map(p => cloudinary.uploader.destroy(p.cloudinaryId)));
     try { await cloudinary.uploader.destroy(DB_CLD_ID, { resource_type: 'raw' }); } catch(e) {}
     await writeDB([]);
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ error: String(e) }); }
+});
+
+// POST /api/admin/layout  ← sauvegarde des positions WYSIWYG
+app.post('/api/admin/layout', requireAuth, async (req, res) => {
+  try {
+    const { layout } = req.body; // [{ id, layout: {x,y,w,h} }]
+    if (!Array.isArray(layout)) return res.status(400).json({ error: 'layout[] requis' });
+    const db = await readDB();
+    layout.forEach(item => {
+      const p = db.find(x => x.id === item.id);
+      if (p) p.layout = item.layout; // null = retiré de la toile
+    });
+    // Retirer le layout des photos non mentionnées (si envoi partiel, on garde l'existant)
+    await writeDB(db);
     res.json({ ok: true });
   } catch(e) { res.status(500).json({ error: String(e) }); }
 });
