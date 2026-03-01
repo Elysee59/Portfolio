@@ -801,6 +801,58 @@ document.getElementById('add-input').addEventListener('change', e => {
   uploadFiles(e.target.files); e.target.value = '';
 });
 
+/* ══════════════════════════════════════════
+   COMPRESSION AVANT UPLOAD
+   - Lit l'image via Canvas
+   - Ré-encode en JPEG qualité 85%
+   - Réduit jusqu'à ce que < MAX_MB
+   - Conserve les dimensions originales (pas de redimensionnement)
+══════════════════════════════════════════ */
+const MAX_MB = 9.5; // Marge de sécurité sous 10Mo
+
+async function compressImage(file) {
+  // Lire l'image
+  const img = await new Promise((res, rej) => {
+    const url = URL.createObjectURL(file);
+    const i = new Image();
+    i.onload  = () => { URL.revokeObjectURL(url); res(i); };
+    i.onerror = () => { URL.revokeObjectURL(url); rej(new Error('Lecture image')); };
+    i.src = url;
+  });
+
+  const w = img.naturalWidth, h = img.naturalHeight;
+  const canvas = document.createElement('canvas');
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(img, 0, 0);
+
+  // Compression itérative : on descend la qualité jusqu'à passer sous MAX_MB
+  let quality = 0.85;
+  let blob;
+  let iterations = 0;
+
+  do {
+    blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+    if (blob.size > MAX_MB * 1024 * 1024 && quality > 0.3) {
+      quality = Math.max(0.3, quality - 0.1);
+      iterations++;
+    } else {
+      break;
+    }
+  } while (iterations < 6);
+
+  const sizeMB = (blob.size / 1024 / 1024).toFixed(1);
+  console.log(`Compressé: ${file.name} → ${sizeMB}Mo (qualité ${Math.round(quality*100)}%)`);
+
+  // Retourner un File avec le nom original
+  return {
+    blob: new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' }),
+    w, h,
+    sizeMB,
+    quality: Math.round(quality * 100),
+  };
+}
+
 async function uploadFiles(files) {
   const arr = Array.from(files).filter(f => f.type.startsWith('image/'));
   if (!arr.length) return;
@@ -811,18 +863,23 @@ async function uploadFiles(files) {
   let done = 0;
 
   for (const file of arr) {
-    txt.textContent = `${done + 1} / ${arr.length} — ${file.name}`;
-    fill.style.width = '5%';
+    txt.textContent = `${done + 1} / ${arr.length} — Compression…`;
+    fill.style.width = '3%';
     try {
-      // 1. Signature
+      // 1. Comprimer à 85% JPEG, max 9.5Mo
+      const { blob: compressed, w, h, sizeMB, quality } = await compressImage(file);
+      txt.textContent = `${done + 1} / ${arr.length} — Upload (${sizeMB}Mo)…`;
+      fill.style.width = '10%';
+
+      // 2. Signature Cloudinary
       const sigRes = await fetch(`${API}/api/admin/sign`, { headers: authH() });
       if (!sigRes.ok) throw new Error('Signature refusée');
       const sig = await sigRes.json();
 
-      // 2. Upload Cloudinary avec progression
+      // 3. Upload direct Cloudinary
       await new Promise((resolve, reject) => {
         const form = new FormData();
-        form.append('file', file);
+        form.append('file', compressed);
         form.append('api_key', sig.api_key);
         form.append('timestamp', sig.timestamp);
         form.append('signature', sig.signature);
@@ -831,38 +888,40 @@ async function uploadFiles(files) {
         const xhr = new XMLHttpRequest();
         xhr.open('POST', `https://api.cloudinary.com/v1_1/${sig.cloud_name}/image/upload`);
         xhr.upload.onprogress = e => {
-          if (e.lengthComputable) fill.style.width = Math.round((done / arr.length + (e.loaded / e.total) / arr.length) * 100) + '%';
+          if (e.lengthComputable) {
+            const pct = Math.round(10 + (done / arr.length + (e.loaded / e.total) / arr.length) * 88);
+            fill.style.width = pct + '%';
+          }
         };
-        xhr.onload = () => xhr.status < 300 ? resolve(JSON.parse(xhr.responseText)) : reject(new Error('Upload Cloudinary ' + xhr.status));
+        xhr.onload = () => xhr.status < 300 ? resolve(JSON.parse(xhr.responseText)) : reject(new Error('Cloudinary ' + xhr.status));
         xhr.onerror = () => reject(new Error('Réseau'));
         xhr.send(form);
       });
 
-      // 3. Dimensions locales
-      const dims = await new Promise(res => {
-        const url = URL.createObjectURL(file); const img = new Image();
-        img.onload  = () => { URL.revokeObjectURL(url); res({ w: img.naturalWidth, h: img.naturalHeight }); };
-        img.onerror = () => { URL.revokeObjectURL(url); res({ w: 0, h: 0 }); };
-        img.src = url;
-      });
-
-      // 4. Enregistrer
+      // 4. Enregistrer les métadonnées (dimensions originales)
       const regRes = await fetch(`${API}/api/admin/photos/register`, {
         method: 'POST', headers: authH(),
-        body: JSON.stringify({ cloudinaryId: sig.folder + '/' + sig.public_id, originalName: file.name, w: dims.w, h: dims.h }),
+        body: JSON.stringify({
+          cloudinaryId: sig.folder + '/' + sig.public_id,
+          originalName: file.name,
+          w, h,
+        }),
       });
-      if (!regRes.ok) throw new Error('Enregistrement');
+      if (!regRes.ok) throw new Error('Enregistrement échoué : ' + await regRes.text());
       const newPhoto = await regRes.json();
       photos.push(newPhoto);
       done++;
       fill.style.width = Math.round((done / arr.length) * 100) + '%';
       buildPalette();
       updateStatus();
-    } catch(e) { showToast('Erreur : ' + e.message); }
+    } catch(e) {
+      console.error('Upload error:', e);
+      showToast('Erreur : ' + e.message);
+    }
   }
 
-  showToast(`${done} photo${done > 1 ? 's' : ''} ajoutée${done > 1 ? 's' : ''} — glissez sur la toile`);
-  setTimeout(() => { prog.classList.remove('show'); fill.style.width = '0'; }, 1000);
+  showToast(`✓ ${done} photo${done > 1 ? 's' : ''} ajoutée${done > 1 ? 's' : ''} — glissez sur la toile`);
+  setTimeout(() => { prog.classList.remove('show'); fill.style.width = '0'; }, 1200);
 }
 
 /* ══════════════════════════════════════════

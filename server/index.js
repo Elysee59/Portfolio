@@ -316,7 +316,7 @@ app.use((err, req, res, next) => {
 app.get('/admin/*', (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'admin', 'index.html')));
 app.get('*',        (req, res) => res.sendFile(path.join(__dirname, '..', 'public', 'expo',  'index.html')));
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log('✓ Atelier Portfolio — port ' + PORT);
   console.log('  Cloud  : ' + (process.env.CLOUDINARY_CLOUD_NAME || '⚠ manquant'));
   console.log('  Mode   : upload direct navigateur → Cloudinary (100Mo max/fichier)');
