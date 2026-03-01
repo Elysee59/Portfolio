@@ -561,7 +561,43 @@ function computeLayout(list) {
 }
 
 /* ══════════════════════════════════════════
+   COULEUR DOMINANTE D'UNE IMAGE
+   Échantillonnage Canvas 10×10 → moyenne RGB
+   → couleur "ambiant" pour le halo de fond
+══════════════════════════════════════════ */
+function getDominantColor(img) {
+  try {
+    const c = document.createElement('canvas');
+    c.width = 10; c.height = 10;
+    const ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(img, 0, 0, 10, 10);
+    const d = ctx.getImageData(0, 0, 10, 10).data;
+    let r = 0, g = 0, b = 0, count = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      // Ignorer pixels trop sombres ou trop blancs (fond neutre)
+      const lum = (d[i] + d[i+1] + d[i+2]) / 3;
+      if (lum < 20 || lum > 235) continue;
+      r += d[i]; g += d[i+1]; b += d[i+2]; count++;
+    }
+    if (!count) return null;
+    r = Math.round(r / count);
+    g = Math.round(g / count);
+    b = Math.round(b / count);
+    // Saturation légèrement boostée pour un rendu plus vivant
+    const avg = (r + g + b) / 3;
+    const boost = 1.4;
+    r = Math.min(255, Math.round(avg + (r - avg) * boost));
+    g = Math.min(255, Math.round(avg + (g - avg) * boost));
+    b = Math.min(255, Math.round(avg + (b - avg) * boost));
+    return `${r},${g},${b}`;
+  } catch(e) { return null; }
+}
+
+/* ══════════════════════════════════════════
    RENDU DES CARTES
+   - Photos droites (0° de rotation)
+   - Halo ambiant coloré derrière chaque photo
+   - Centrage intelligent sans espaces vides
 ══════════════════════════════════════════ */
 function renderCanvas() {
   const canvas = document.getElementById('canvas');
@@ -570,12 +606,32 @@ function renderCanvas() {
   canvas.style.height = CANVAS_H + 'px';
 
   photos.forEach((photo, idx) => {
+    // ── Halo ambiant (div derrière la photo) ──
+    const halo = document.createElement('div');
+    halo.className = 'card-halo';
+    halo.style.cssText = `
+      position:absolute;
+      left:${photo._x - photo._w * 0.18}px;
+      top:${photo._y - photo._h * 0.18}px;
+      width:${photo._w * 1.36}px;
+      height:${photo._h * 1.36}px;
+      border-radius:50%;
+      background:radial-gradient(ellipse at center, rgba(180,160,140,0.22) 0%, transparent 70%);
+      pointer-events:none;
+      z-index:0;
+      filter:blur(40px);
+      transition:opacity 1.2s;
+      opacity:0;
+    `;
+    canvas.appendChild(halo);
+
+    // ── Carte photo ──
     const card = document.createElement('div');
     card.className = 'card';
     card.style.left   = photo._x + 'px';
     card.style.top    = photo._y + 'px';
     card.style.width  = photo._w + 'px';
-    card.style.zIndex = Math.floor(Math.random() * 5) + 1;
+    card.style.zIndex = 1 + (idx % 5);
 
     const frame = document.createElement('div');
     frame.className = 'card-frame';
@@ -583,13 +639,24 @@ function renderCanvas() {
     frame.style.height = photo._h + 'px';
 
     const img = document.createElement('img');
-    img.className   = 'card-img';
-    img.src         = photo.url;
-    img.alt         = photo.name;
-    img.loading     = 'lazy';
-    img.draggable   = false;
+    img.className  = 'card-img';
+    img.alt        = photo.name;
+    img.loading    = 'lazy';
+    img.draggable  = false;
+    img.crossOrigin = 'anonymous';
     img.style.width  = photo._w + 'px';
     img.style.height = photo._h + 'px';
+
+    // Dès que l'image charge → extraire couleur dominante → peindre le halo
+    img.addEventListener('load', () => {
+      const color = getDominantColor(img);
+      if (color) {
+        halo.style.background = `radial-gradient(ellipse at center, rgba(${color},0.28) 0%, rgba(${color},0.08) 50%, transparent 72%)`;
+      }
+      halo.style.opacity = '1';
+    }, { once: true });
+
+    img.src = photo.url;
 
     const label = document.createElement('div');
     label.className = 'card-label';
@@ -599,38 +666,31 @@ function renderCanvas() {
     card.appendChild(frame);
     card.appendChild(label);
 
-    // Légère rotation aléatoire (-1.5° à +1.5°)
-    const rot = (Math.random() - 0.5) * 3;
-    card.style.transform = `rotate(${rot.toFixed(2)}deg)`;
-
-    // Hover
     card.addEventListener('mouseenter', () => document.body.classList.add('hovcard'));
     card.addEventListener('mouseleave', () => document.body.classList.remove('hovcard'));
+    card.addEventListener('click', () => { if (!hasDragged) openLb(idx); });
 
-    // Clic → lightbox (seulement si pas de drag)
-    card.addEventListener('click', () => {
-      if (!hasDragged) openLb(idx);
-    });
-
-    // Reveal avec délai décalé
-    setTimeout(() => card.classList.add('visible'), 100 + idx * 60);
-
+    setTimeout(() => card.classList.add('visible'), 80 + idx * 50);
     canvas.appendChild(card);
   });
 
-  // Centrer la vue sur la zone centrale de la toile
+  // ── Centrage : démarrer sur les premières photos, pas dans le vide ──
   const vw = window.innerWidth, vh = window.innerHeight;
-  // Partir du centre de la toile
-  camX = vw / 2 - CANVAS_W / 2;
-  camY = vh / 2 - CANVAS_H / 2;
-  // Décaler légèrement vers le haut-gauche pour commencer depuis les premières photos
-  camX = Math.min(100, camX + CANVAS_W * 0.08);
-  camY = Math.min(80, camY + CANVAS_H * 0.05);
+  const placed = photos.filter(p => p._x !== undefined);
+  if (placed.length) {
+    // Centre de masse des photos → on centre la vue dessus
+    const minX = Math.min(...placed.map(p => p._x));
+    const minY = Math.min(...placed.map(p => p._y));
+    // On commence en haut-gauche des photos avec une petite marge
+    camX = -minX + Math.round(vw * 0.08);
+    camY = -minY + Math.round(vh * 0.10);
+  } else {
+    camX = 80; camY = 80;
+  }
   clampCam();
   applyTransform();
   buildMinimap();
 
-  // Afficher les contrôles
   setTimeout(() => {
     document.getElementById('hud').classList.add('show');
     document.getElementById('minimap').classList.add('show');
