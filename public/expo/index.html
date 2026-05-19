@@ -312,53 +312,121 @@ body.hovcard #cr{width:44px;height:44px;border-color:rgba(139,111,94,.3)}
 'use strict';
 
 /* ══════════════════════════════════════════
-   ÉTAT GLOBAL
+   VARIABLES GLOBALES & ÉTATS
 ══════════════════════════════════════════ */
 let photos = [];
-let lbIdx  = 0;
+let lbIdx = 0;
 
-// Position courante de la toile (ce qu'on voit)
-let camX = 0, camY = 0;     // position cible
-let velX = 0, velY = 0;     // vélocité pour inertie
+// Position de la caméra (Exploration)
+let camX = 0, camY = 0;       // Position fluide actuelle
+let targetX = 0, targetY = 0; // Position cible (découplage)
+let velX = 0, velY = 0;       // Vélocité pour l'inertie
+const FRICTION = 0.92;
+
+// États du Drag (Souris & Touch)
 let isDragging = false;
 let dragStartX = 0, dragStartY = 0;
 let dragCamX = 0, dragCamY = 0;
 let hasDragged = false;
 
-// Bounds de la toile
+// Limites du Canvas (calculées dynamiquement)
+let minX = 0, maxX = 0, minY = 0, maxY = 0;
+
+// Bounds de la toile (pour les calculs)
 let CANVAS_W = 0, CANVAS_H = 0;
 
-const FRICTION = 0.88; // inertie au relâchement
-
 /* ══════════════════════════════════════════
-   CURSEUR
+   GESTION DU CURSEUR (Coordonnées cibles)
 ══════════════════════════════════════════ */
+let mx = 0, my = 0; // Position réelle de la souris
+let rx = 0, ry = 0; // Position amortie du cercle externe
 const CD = document.getElementById('cd');
 const CR = document.getElementById('cr');
-let mx = 0, my = 0, rx = 0, ry = 0;
 
-document.addEventListener('mousemove', e => { mx = e.clientX; my = e.clientY; });
-(function animCursor() {
-  CD.style.left = mx + 'px'; CD.style.top = my + 'px';
-  rx += (mx - rx) * .12; ry += (my - ry) * .12;
-  CR.style.left = rx + 'px'; CR.style.top = ry + 'px';
-  requestAnimationFrame(animCursor);
-})();
+document.addEventListener('mousemove', e => {
+  mx = e.clientX;
+  my = e.clientY;
+});
 
 /* ══════════════════════════════════════════
-   NAVIGATION — DRAG SOURIS
+   BOUCLE PRINCIPALE D'ANIMATION (60/120 FPS)
+   Gère le curseur GPU et l'inertie fluide
 ══════════════════════════════════════════ */
-const VP = document.getElementById('viewport');
+function tick() {
+  // 1. Animation du Curseur via Translate3D (Zéro Reflow)
+  if (CD && CR) {
+    CD.style.transform = `translate3d(${mx}px, ${my}px, 0) translate(-50%, -50%)`;
+    rx += (mx - rx) * 0.12;
+    ry += (my - ry) * 0.12;
+    CR.style.transform = `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%)`;
+  }
 
-VP.addEventListener('mousedown', e => {
-  if (e.button !== 0) return;
+  // 2. Animation de la Toile (Interpolation linéaire / Lerp)
+  if (isDragging) {
+    // On glisse en douceur vers la cible
+    camX += (targetX - camX) * 0.15;
+    camY += (targetY - camY) * 0.15;
+  } else {
+    // Relâchement : application de la vélocité et friction
+    camX += velX;
+    camY += velY;
+    velX *= FRICTION;
+    velY *= FRICTION;
+    
+    // On synchronise la cible pour éviter les sauts au prochain clic
+    targetX = camX;
+    targetY = camY;
+  }
+
+  // Contraintes de bordures et rendu physique
+  clampCam();
+  applyTransform();
+
+  // Rappel de la boucle à la frame suivante
+  requestAnimationFrame(tick);
+}
+// Lancement immédiat de la boucle unique
+requestAnimationFrame(tick);
+
+/* ══════════════════════════════════════════
+   FONCTIONS DE RENDU PHYSIQUE
+══════════════════════════════════════════ */
+function applyTransform() {
+  // Utilisation exclusive de translate3d pour forcer le hardware acceleration
+  const canvas = document.getElementById('canvas');
+  canvas.style.transform = `translate3d(${camX}px, ${camY}px, 0)`;
+  updateMinimap();
+}
+
+function clampCam() {
+  if (camX > minX) { camX = minX; velX = 0; targetX = minX; }
+  if (camX < maxX) { camX = maxX; velX = 0; targetX = maxX; }
+  if (camY > minY) { camY = minY; velY = 0; targetY = minY; }
+  if (camY < maxY) { camY = maxY; velY = 0; targetY = maxY; }
+}
+
+/* ══════════════════════════════════════════
+   LOGIQUE DE NAVIGATION INTERACTIVE (DRAG)
+══════════════════════════════════════════ */
+// SOURIS
+document.addEventListener('mousedown', e => {
+  const navEl = document.getElementById('nav');
+  const emptyEl = document.getElementById('empty');
+  const LB = document.getElementById('lb');
+  if (LB.classList.contains('open')) return;
+  if (e.target.closest('nav') || (emptyEl && emptyEl.classList.contains('show'))) return;
+  
   isDragging = true;
   hasDragged = false;
   dragStartX = e.clientX;
   dragStartY = e.clientY;
   dragCamX = camX;
   dragCamY = camY;
-  velX = 0; velY = 0;
+  velX = 0;
+  velY = 0;
+  targetX = camX;
+  targetY = camY;
+  
   document.body.classList.add('dragging');
 });
 
@@ -366,101 +434,63 @@ document.addEventListener('mousemove', e => {
   if (!isDragging) return;
   const dx = e.clientX - dragStartX;
   const dy = e.clientY - dragStartY;
-  if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasDragged = true;
-  velX = e.movementX;
-  velY = e.movementY;
-  camX = dragCamX + dx;
-  camY = dragCamY + dy;
-  clampCam();
-  applyTransform();
+  
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+    hasDragged = true;
+  }
+  
+  // On définit la cible, le "tick()" s'occupera d'y aller smoothly
+  targetX = dragCamX + dx;
+  targetY = dragCamY + dy;
+  
+  // Calcul instantané de la vélocité pour l'inertie future
+  velX = targetX - camX;
+  velY = targetY - camY;
 });
 
 document.addEventListener('mouseup', () => {
-  if (!isDragging) return;
   isDragging = false;
   document.body.classList.remove('dragging');
 });
 
-/* ══════════════════════════════════════════
-   NAVIGATION — TOUCH
-══════════════════════════════════════════ */
-let touchId = null, touchStartX = 0, touchStartY = 0;
-let lastTX = 0, lastTY = 0;
-
-VP.addEventListener('touchstart', e => {
-  const t = e.touches[0];
-  touchId = t.identifier;
-  touchStartX = t.clientX; touchStartY = t.clientY;
-  dragCamX = camX; dragCamY = camY;
-  lastTX = t.clientX; lastTY = t.clientY;
-  velX = 0; velY = 0;
+// MOBILE (TOUCH)
+document.addEventListener('touchstart', e => {
+  const emptyEl = document.getElementById('empty');
+  const LB = document.getElementById('lb');
+  if (LB.classList.contains('open') || e.target.closest('nav') || (emptyEl && emptyEl.classList.contains('show'))) return;
+  isDragging = true;
   hasDragged = false;
+  const t = e.touches[0];
+  dragStartX = t.clientX;
+  dragStartY = t.clientY;
+  dragCamX = camX;
+  dragCamY = camY;
+  velX = 0;
+  velY = 0;
+  targetX = camX;
+  targetY = camY;
 }, { passive: true });
 
-VP.addEventListener('touchmove', e => {
-  const t = [...e.touches].find(x => x.identifier === touchId);
-  if (!t) return;
-  const dx = t.clientX - touchStartX;
-  const dy = t.clientY - touchStartY;
-  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) hasDragged = true;
-  velX = t.clientX - lastTX;
-  velY = t.clientY - lastTY;
-  lastTX = t.clientX; lastTY = t.clientY;
-  camX = dragCamX + dx;
-  camY = dragCamY + dy;
-  clampCam();
-  applyTransform();
-  e.preventDefault();
-}, { passive: false });
-
-VP.addEventListener('touchend', () => { touchId = null; });
-
-/* ══════════════════════════════════════════
-   NAVIGATION — MOLETTE / TRACKPAD
-   Molette verticale → scroll vertical
-   Shift+molette ou molette horizontale → scroll horizontal
-══════════════════════════════════════════ */
-VP.addEventListener('wheel', e => {
-  e.preventDefault();
-  camX -= e.deltaX;
-  camY -= e.deltaY;
-  clampCam();
-  applyTransform();
-  updateMinimap();
-}, { passive: false });
-
-/* ══════════════════════════════════════════
-   INERTIE après relâchement
-══════════════════════════════════════════ */
-function inertiaLoop() {
-  if (!isDragging && (Math.abs(velX) > 0.3 || Math.abs(velY) > 0.3)) {
-    camX += velX;
-    camY += velY;
-    velX *= FRICTION;
-    velY *= FRICTION;
-    clampCam();
-    applyTransform();
-    updateMinimap();
+document.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  const t = e.touches[0];
+  const dx = t.clientX - dragStartX;
+  const dy = t.clientY - dragStartY;
+  
+  if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+    hasDragged = true;
   }
-  requestAnimationFrame(inertiaLoop);
-}
-requestAnimationFrame(inertiaLoop);
+  
+  targetX = dragCamX + dx;
+  targetY = dragCamY + dy;
+  
+  velX = targetX - camX;
+  velY = targetY - camY;
+}, { passive: true });
 
-/* ══════════════════════════════════════════
-   CLAMP — empêche de sortir de la toile
-══════════════════════════════════════════ */
-function clampCam() {
-  const vw = window.innerWidth, vh = window.innerHeight;
-  const pad = 200; // marge pour voir qu'il y a encore des photos
-  camX = Math.min(pad, Math.max(vw - CANVAS_W - pad, camX));
-  camY = Math.min(pad, Math.max(vh - CANVAS_H - pad, camY));
-}
-
-function applyTransform() {
-  document.getElementById('canvas').style.transform =
-    `translate3d(${Math.round(camX)}px,${Math.round(camY)}px,0)`;
-  updateMinimap();
-}
+document.addEventListener('touchend', () => {
+  isDragging = false;
+});
 
 /* ══════════════════════════════════════════
    BOUTON RECENTRER
@@ -743,12 +773,13 @@ document.addEventListener('keydown', e => {
 
 // Flèches clavier pour naviguer dans la toile
 document.addEventListener('keydown', e => {
+  const LB = document.getElementById('lb');
   if (LB.classList.contains('open')) return;
-  const STEP = 200;
-  if (e.key === 'ArrowLeft')  { camX += STEP; clampCam(); applyTransform(); }
-  if (e.key === 'ArrowRight') { camX -= STEP; clampCam(); applyTransform(); }
-  if (e.key === 'ArrowUp')    { camY += STEP; clampCam(); applyTransform(); }
-  if (e.key === 'ArrowDown')  { camY -= STEP; clampCam(); applyTransform(); }
+  const STEP = 250;
+  if (e.key === 'ArrowLeft')  { targetX += STEP; }
+  if (e.key === 'ArrowRight') { targetX -= STEP; }
+  if (e.key === 'ArrowUp')    { targetY += STEP; }
+  if (e.key === 'ArrowDown')  { targetY -= STEP; }
 });
 
 /* ══════════════════════════════════════════
