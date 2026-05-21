@@ -299,8 +299,17 @@ body.hovcard #cr{width:44px;height:44px;border-color:rgba(139,111,94,.3)}
 /* ══════════════════════════════════════════
    VARIABLES GLOBALES & ÉTATS
 ══════════════════════════════════════════ */
+
+
 let photos = [];
 let lbIdx = 0;
+
+// --- SYSTÈME DE ZOOM ---
+let scale = 1;          // Zoom actuel
+let targetScale = 1;    // Zoom cible pour l'amorti (Lerp)
+const MIN_SCALE = 0.3;   // Vue d'ensemble (dézoom maximum)
+const MAX_SCALE = 2.0;   // Zoom maximum pour les détails
+const ZOOM_SPEED = 0.05; // Sensibilité du zoom
 
 // Position de la caméra (Exploration fluide)
 let camX = 0, camY = 0;       // Position actuelle affichée
@@ -358,6 +367,8 @@ function tick() {
     camX += (targetX - camX) * 0.12;
     camY += (targetY - camY) * 0.12;
   }
+// Amorti du zoom (Lerp)
+  scale += (targetScale - scale) * 0.1; // 0.1 gère la vitesse d'amorti
 
   // Application des limites exactes basées sur CANVAS_W et CANVAS_H
   clampCam();
@@ -373,10 +384,11 @@ requestAnimationFrame(tick);
 function applyTransform() {
   const canvas = document.getElementById('canvas');
   if (canvas) {
-    canvas.style.transform = `translate3d(${camX}px, ${camY}px, 0)`;
+    canvas.style.transform = `translate3d(${camX}px, ${camY}px, 0) scale(${scale})`;
   }
   updateMinimap();
 }
+
 
 // Empêche la toile de sortir complètement de l'écran avec une marge de confort
 function clampCam() {
@@ -414,8 +426,8 @@ document.addEventListener('mousedown', e => {
   dragCamY = camY;
   
   // On synchronise la cible sur l'emplacement actuel au clic pour stopper net toute inertie résiduelle
-  targetX = camX;
-  targetY = camY;
+  targetX = dragCamX + (dx / scale);
+  targetY = dragCamY + (dy / scale);
   velX = 0;
   velY = 0;
   
@@ -484,6 +496,18 @@ document.addEventListener('touchmove', e => {
 document.addEventListener('touchend', () => {
   isDragging = false;
 });
+
+// Zoom à la molette
+window.addEventListener('wheel', e => {
+  // Empêche le comportement par défaut de la page
+  e.preventDefault();
+
+  // Détermine la direction du scroll (haut ou bas)
+  const zoomFactor = e.deltaY < 0 ? 1 + ZOOM_SPEED : 1 - ZOOM_SPEED;
+  
+  // Calcule et bride la nouvelle cible de zoom
+  targetScale = Math.min(Math.max(targetScale * zoomFactor, MIN_SCALE), MAX_SCALE);
+}, { passive: false }); // 'passive: false' est obligatoire pour pouvoir faire un preventDefault()
 
 /* ══════════════════════════════════════════
    BOUTON RECENTRER (Interpolation cible)
