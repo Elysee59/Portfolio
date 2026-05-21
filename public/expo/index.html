@@ -307,9 +307,10 @@ let lbIdx = 0;
 // --- SYSTÈME DE ZOOM ---
 let scale = 1;          // Zoom actuel
 let targetScale = 1;    // Zoom cible pour l'amorti (Lerp)
-const MIN_SCALE = 0.3;   // Vue d'ensemble (dézoom maximum)
-const MAX_SCALE = 2.0;   // Zoom maximum pour les détails
-const ZOOM_SPEED = 0.05; // Sensibilité du zoom
+const MIN_SCALE = 0.4;   // Vue d'ensemble (dézoom maximum)
+const MAX_SCALE = 1.8;   // Zoom maximum pour les détails
+const ZOOM_SPEED = 0.04; // Sensibilité du zoom
+// ── SYSTÈME DE ZOOM ÉDITORIAL ──
 
 // Position de la caméra (Exploration fluide)
 let camX = 0, camY = 0;       // Position actuelle affichée
@@ -343,7 +344,7 @@ document.addEventListener('mousemove', e => {
    BOUCLE PRINCIPALE DE RENDU & PHYSIQUE
 ══════════════════════════════════════════ */
 function tick() {
-  // 1. Curseur matériel fluide
+  // 1. Amorti du curseur personnalisé
   if (CD && CR) {
     CD.style.transform = `translate3d(${mx}px, ${my}px, 0) translate(-50%, -50%)`;
     rx += (mx - rx) * 0.12;
@@ -351,44 +352,53 @@ function tick() {
     CR.style.transform = `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%)`;
   }
 
-  // 2. Gestion de la physique et de la glisse
+  // 2. Gestion de l'amorti du zoom (Lerp)
+  if (Math.abs(targetScale - scale) > 0.001) {
+    scale += (targetScale - scale) * 0.1; // 0.1 détermine la souplesse du zoom
+    clampCam();
+    applyTransform();
+  }
+
+  // 3. Gestion de l'inertie du déplacement (ton code d'origine)
   if (isDragging) {
-    // Pendant le drag, on suit la cible de glissement
     camX += (targetX - camX) * 0.14;
     camY += (targetY - camY) * 0.14;
+    clampCam();
+    applyTransform();
   } else {
-    // Relâchement : inertie fluide appliquée à la cible
-    targetX += velX;
-    targetY += velY;
-    velX *= FRICTION;
-    velY *= FRICTION;
+    if (Math.abs(velX) > 0.05 || Math.abs(velY) > 0.05) {
+      targetX += velX;
+      targetY += velY;
+      velX *= FRICTION;
+      velY *= FRICTION;
 
-    // Amorti soyeux de la caméra vers la cible finale
-    camX += (targetX - camX) * 0.12;
-    camY += (targetY - camY) * 0.12;
+      camX += (targetX - camX) * 0.12;
+      camY += (targetY - camY) * 0.12;
+      clampCam();
+      applyTransform();
+    }
   }
-// Amorti du zoom (Lerp)
-  scale += (targetScale - scale) * 0.1; // 0.1 gère la vitesse d'amorti
-
-  // Application des limites exactes basées sur CANVAS_W et CANVAS_H
-  clampCam();
-  applyTransform();
 
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
 
+  // Application des limites exactes basées sur CANVAS_W et CANVAS_H
+
+
 /* ══════════════════════════════════════════
    RENDU MATÉRIEL (GPU-Accelerated)
 ══════════════════════════════════════════ */
-function applyTransform() {
-  const canvas = document.getElementById('canvas');
-  if (canvas) {
-    canvas.style.transform = `translate3d(${camX}px, ${camY}px, 0) scale(${scale})`;
-  }
-  updateMinimap();
-}
 
+// Modification de la fonction applyTransform pour inclure le scale
+function applyTransform() {
+  const canvasEl = document.getElementById('canvas');
+  if (!canvasEl) return;
+  // translate3d + scale combinés provoquent le calcul direct par le GPU (carte graphique)
+  canvasEl.style.transform = `translate3d(${Math.round(camX)}px, ${Math.round(camY)}px, 0) scale(${scale})`;
+  updateMinimap();
+  }
+  
 
 // Empêche la toile de sortir complètement de l'écran avec une marge de confort
 function clampCam() {
@@ -443,8 +453,8 @@ document.addEventListener('mousemove', e => {
     hasDragged = true;
   }
   
-  targetX = dragCamX + dx;
-  targetY = dragCamY + dy;
+  targetX = dragCamX + (dx / scale);
+  targetY = dragCamY + (dy / scale);
   
   // Accumulation de vélocité basée sur le déplacement réel
   velX = targetX - camX;
@@ -470,8 +480,8 @@ document.addEventListener('touchstart', e => {
   dragCamX = camX;
   dragCamY = camY;
   
-  targetX = camX;
-  targetY = camY;
+  targetX = dragCamX + (dx / scale);
+  targetY = dragCamY + (dy / scale);
   velX = 0;
   velY = 0;
 }, { passive: true });
@@ -486,8 +496,8 @@ document.addEventListener('touchmove', e => {
     hasDragged = true;
   }
   
-  targetX = dragCamX + dx;
-  targetY = dragCamY + dy;
+  targetX = dragCamX + (dx / scale);
+  targetY = dragCamY + (dy / scale);
   
   velX = targetX - camX;
   velY = targetY - camY;
@@ -498,16 +508,24 @@ document.addEventListener('touchend', () => {
 });
 
 // Zoom à la molette
-window.addEventListener('wheel', e => {
-  // Empêche le comportement par défaut de la page
+
+
+// Remplacement de la gestion de la molette pour combiner Translation + Zoom
+VP.addEventListener('wheel', e => {
   e.preventDefault();
 
-  // Détermine la direction du scroll (haut ou bas)
-  const zoomFactor = e.deltaY < 0 ? 1 + ZOOM_SPEED : 1 - ZOOM_SPEED;
-  
-  // Calcule et bride la nouvelle cible de zoom
-  targetScale = Math.min(Math.max(targetScale * zoomFactor, MIN_SCALE), MAX_SCALE);
-}, { passive: false }); // 'passive: false' est obligatoire pour pouvoir faire un preventDefault()
+  // Si on presse Ctrl ou qu'il s'agit d'un pinch-to-zoom de trackpad (e.ctrlKey est vrai)
+  if (e.ctrlKey) {
+    const zoomFactor = e.deltaY < 0 ? 1 + ZOOM_SPEED * 2 : 1 - ZOOM_SPEED * 2;
+    targetScale = Math.min(Math.max(targetScale * zoomFactor, MIN_SCALE), MAX_SCALE);
+  } else {
+    // Scroll classique (exploration) ajusté selon le niveau de dézoom actuel
+    camX -= e.deltaX / scale;
+    camY -= e.deltaY / scale;
+    clampCam();
+  }
+}, { passive: false });
+
 
 /* ══════════════════════════════════════════
    BOUTON RECENTRER (Interpolation cible)
