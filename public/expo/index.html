@@ -19,7 +19,7 @@
 
 html,body{
   width:100%;height:100%;
-  overflow:hidden; /* on gère nous-mêmes la navigation */
+  overflow:hidden;
   background:var(--bg);
   color:var(--ink);
   font-family:'Jost',sans-serif;font-weight:200;
@@ -28,11 +28,6 @@ html,body{
   -webkit-user-select:none;
 }
 
-/* ══════════════════════════════════════
-   TOILE INFINIE
-   Conteneur fixe, canvas interne qu'on
-   translate librement dans toutes les directions
-══════════════════════════════════════ */
 #viewport{
   position:fixed;inset:0;
   overflow:hidden;
@@ -41,10 +36,9 @@ html,body{
 #canvas{
   position:absolute;
   top:0;left:0;
-  /* La taille sera définie en JS selon le nb de photos */
   will-change:transform;
   transform-origin:0 0;
-  transition:none; /* le smooth est géré manuellement */
+  transition:none;
 }
 
 /* ── Photo card ── */
@@ -105,7 +99,7 @@ body.dragging #cr{width:52px;height:52px;border-color:rgba(139,111,94,.25);trans
 body.hovcard #cd{width:7px;height:7px;background:var(--rust)}
 body.hovcard #cr{width:44px;height:44px;border-color:rgba(139,111,94,.3)}
 
-/* ── HUD — navigation hints ── */
+/* ── HUD ── */
 #hud{
   position:fixed;bottom:32px;left:50%;transform:translateX(-50%);
   z-index:500;display:flex;align-items:center;gap:20px;
@@ -144,7 +138,6 @@ body.hovcard #cr{width:44px;height:44px;border-color:rgba(139,111,94,.3)}
 #mm-view{
   position:absolute;border:1px solid rgba(139,111,94,.5);
   background:rgba(139,111,94,.08);pointer-events:none;
-  transition:left .08s,top .08s,width .08s,height .08s;
 }
 
 /* ── Nav header ── */
@@ -249,16 +242,13 @@ body.hovcard #cr{width:44px;height:44px;border-color:rgba(139,111,94,.3)}
 </head>
 <body>
 
-<!-- Intro -->
 <div id="intro">
   <div class="i-mark"><span>A</span><span>T</span><span>E</span><span>L</span><span>I</span><span>E</span><span>R</span></div>
   <div class="i-sub">Explorez librement</div>
 </div>
 
-<!-- Curseur -->
 <div id="cd"></div><div id="cr"></div>
 
-<!-- Nav -->
 <div id="nav">
   <span class="n-brand">Atelier</span>
   <div class="n-right">
@@ -268,12 +258,10 @@ body.hovcard #cr{width:44px;height:44px;border-color:rgba(139,111,94,.3)}
   </div>
 </div>
 
-<!-- Toile infinie -->
 <div id="viewport">
   <div id="canvas"></div>
 </div>
 
-<!-- HUD directions -->
 <div id="hud">
   <div class="hud-arrow">
     <div class="hud-arrows">
@@ -291,13 +279,10 @@ body.hovcard #cr{width:44px;height:44px;border-color:rgba(139,111,94,.3)}
   </div>
 </div>
 
-<!-- Minimap -->
 <div id="minimap"><div id="mm-dots"></div><div id="mm-view"></div></div>
 
-<!-- État vide -->
 <div id="empty"><div class="ev-icon">∅</div><div class="ev-title">Exposition en préparation</div><div class="ev-sub">Les œuvres arrivent bientôt</div></div>
 
-<!-- Lightbox -->
 <div id="lb">
   <button id="lb-close"><div class="lb-x"></div><span>Fermer</span></button>
   <div class="lb-wrap">
@@ -317,10 +302,10 @@ body.hovcard #cr{width:44px;height:44px;border-color:rgba(139,111,94,.3)}
 let photos = [];
 let lbIdx = 0;
 
-// Position de la caméra (Exploration)
-let camX = 0, camY = 0;       // Position fluide actuelle
-let targetX = 0, targetY = 0; // Position cible (découplage)
-let velX = 0, velY = 0;       // Vélocité pour l'inertie
+// Position de la caméra (Exploration fluide)
+let camX = 0, camY = 0;       // Position actuelle affichée
+let targetX = 0, targetY = 0; // Position cible vers laquelle on glisse
+let velX = 0, velY = 0;       // Vélocité pour l'inertie physique
 const FRICTION = 0.92;
 
 // États du Drag (Souris & Touch)
@@ -329,17 +314,14 @@ let dragStartX = 0, dragStartY = 0;
 let dragCamX = 0, dragCamY = 0;
 let hasDragged = false;
 
-// Limites du Canvas (calculées dynamiquement)
-let minX = 0, maxX = 0, minY = 0, maxY = 0;
-
-// Bounds de la toile (pour les calculs)
+// Taille globale de la toile (calculée par computeLayout)
 let CANVAS_W = 0, CANVAS_H = 0;
 
 /* ══════════════════════════════════════════
-   GESTION DU CURSEUR (Coordonnées cibles)
+   GESTION DU CURSEUR (Translate3D - Zéro Reflow)
 ══════════════════════════════════════════ */
-let mx = 0, my = 0; // Position réelle de la souris
-let rx = 0, ry = 0; // Position amortie du cercle externe
+let mx = 0, my = 0;
+let rx = 0, ry = 0;
 const CD = document.getElementById('cd');
 const CR = document.getElementById('cr');
 
@@ -349,11 +331,10 @@ document.addEventListener('mousemove', e => {
 });
 
 /* ══════════════════════════════════════════
-   BOUCLE PRINCIPALE D'ANIMATION (60/120 FPS)
-   Gère le curseur GPU et l'inertie fluide
+   BOUCLE PRINCIPALE DE RENDU & PHYSIQUE
 ══════════════════════════════════════════ */
 function tick() {
-  // 1. Animation du Curseur via Translate3D (Zéro Reflow)
+  // 1. Curseur matériel fluide
   if (CD && CR) {
     CD.style.transform = `translate3d(${mx}px, ${my}px, 0) translate(-50%, -50%)`;
     rx += (mx - rx) * 0.12;
@@ -361,60 +342,69 @@ function tick() {
     CR.style.transform = `translate3d(${rx}px, ${ry}px, 0) translate(-50%, -50%)`;
   }
 
-  // 2. Animation de la Toile (Interpolation linéaire / Lerp)
+  // 2. Gestion de la physique et de la glisse
   if (isDragging) {
-    // On glisse en douceur vers la cible
-    camX += (targetX - camX) * 0.15;
-    camY += (targetY - camY) * 0.15;
+    // Pendant le drag, on suit la cible de glissement
+    camX += (targetX - camX) * 0.14;
+    camY += (targetY - camY) * 0.14;
   } else {
-    // Relâchement : application de la vélocité et friction
-    camX += velX;
-    camY += velY;
+    // Relâchement : inertie fluide appliquée à la cible
+    targetX += velX;
+    targetY += velY;
     velX *= FRICTION;
     velY *= FRICTION;
-    
-    // On synchronise la cible pour éviter les sauts au prochain clic
-    targetX = camX;
-    targetY = camY;
+
+    // Amorti soyeux de la caméra vers la cible finale
+    camX += (targetX - camX) * 0.12;
+    camY += (targetY - camY) * 0.12;
   }
 
-  // Contraintes de bordures et rendu physique
+  // Application des limites exactes basées sur CANVAS_W et CANVAS_H
   clampCam();
   applyTransform();
 
-  // Rappel de la boucle à la frame suivante
   requestAnimationFrame(tick);
 }
-// Lancement immédiat de la boucle unique
 requestAnimationFrame(tick);
 
 /* ══════════════════════════════════════════
-   FONCTIONS DE RENDU PHYSIQUE
+   RENDU MATÉRIEL (GPU-Accelerated)
 ══════════════════════════════════════════ */
 function applyTransform() {
-  // Utilisation exclusive de translate3d pour forcer le hardware acceleration
   const canvas = document.getElementById('canvas');
-  canvas.style.transform = `translate3d(${camX}px, ${camY}px, 0)`;
+  if (canvas) {
+    canvas.style.transform = `translate3d(${camX}px, ${camY}px, 0)`;
+  }
   updateMinimap();
 }
 
+// Empêche la toile de sortir complètement de l'écran avec une marge de confort
 function clampCam() {
-  if (camX > minX) { camX = minX; velX = 0; targetX = minX; }
-  if (camX < maxX) { camX = maxX; velX = 0; targetX = maxX; }
-  if (camY > minY) { camY = minY; velY = 0; targetY = minY; }
-  if (camY < maxY) { camY = maxY; velY = 0; targetY = maxY; }
+  if (!CANVAS_W || !CANVAS_H) return;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const pad = 200; // Marge pour voir le bord des cadres externes
+
+  const minLimitX = pad;
+  const maxLimitX = vw - CANVAS_W - pad;
+  const minLimitY = pad;
+  const maxLimitY = vh - CANVAS_H - pad;
+
+  // On bride la position cible pour éviter les dérives infinies
+  if (targetX > minLimitX) { targetX = minLimitX; velX = 0; }
+  if (targetX < maxLimitX) { targetX = maxLimitX; velX = 0; }
+  if (targetY > minLimitY) { targetY = minLimitY; velY = 0; }
+  if (targetY < maxLimitY) { targetY = maxLimitY; velY = 0; }
 }
 
 /* ══════════════════════════════════════════
-   LOGIQUE DE NAVIGATION INTERACTIVE (DRAG)
+   LOGIQUE INTERACTIVE DE GLISSE (DRAG & TOUCH)
 ══════════════════════════════════════════ */
 // SOURIS
 document.addEventListener('mousedown', e => {
-  const navEl = document.getElementById('nav');
   const emptyEl = document.getElementById('empty');
   const LB = document.getElementById('lb');
-  if (LB.classList.contains('open')) return;
-  if (e.target.closest('nav') || (emptyEl && emptyEl.classList.contains('show'))) return;
+  if (LB && LB.classList.contains('open')) return;
+  if (e.target.closest('#nav') || (emptyEl && emptyEl.classList.contains('show'))) return;
   
   isDragging = true;
   hasDragged = false;
@@ -422,10 +412,12 @@ document.addEventListener('mousedown', e => {
   dragStartY = e.clientY;
   dragCamX = camX;
   dragCamY = camY;
-  velX = 0;
-  velY = 0;
+  
+  // On synchronise la cible sur l'emplacement actuel au clic pour stopper net toute inertie résiduelle
   targetX = camX;
   targetY = camY;
+  velX = 0;
+  velY = 0;
   
   document.body.classList.add('dragging');
 });
@@ -439,11 +431,10 @@ document.addEventListener('mousemove', e => {
     hasDragged = true;
   }
   
-  // On définit la cible, le "tick()" s'occupera d'y aller smoothly
   targetX = dragCamX + dx;
   targetY = dragCamY + dy;
   
-  // Calcul instantané de la vélocité pour l'inertie future
+  // Accumulation de vélocité basée sur le déplacement réel
   velX = targetX - camX;
   velY = targetY - camY;
 });
@@ -453,27 +444,29 @@ document.addEventListener('mouseup', () => {
   document.body.classList.remove('dragging');
 });
 
-// MOBILE (TOUCH)
+// ECOUTEURS TACTILES (MOBILE)
 document.addEventListener('touchstart', e => {
   const emptyEl = document.getElementById('empty');
   const LB = document.getElementById('lb');
-  if (LB.classList.contains('open') || e.target.closest('nav') || (emptyEl && emptyEl.classList.contains('show'))) return;
+  if ((LB && LB.classList.contains('open')) || e.target.closest('#nav') || (emptyEl && emptyEl.classList.contains('show'))) return;
+  
   isDragging = true;
   hasDragged = false;
-  const t = e.touches[0];
+  const t = e.touches;
   dragStartX = t.clientX;
   dragStartY = t.clientY;
   dragCamX = camX;
   dragCamY = camY;
-  velX = 0;
-  velY = 0;
+  
   targetX = camX;
   targetY = camY;
+  velX = 0;
+  velY = 0;
 }, { passive: true });
 
 document.addEventListener('touchmove', e => {
   if (!isDragging) return;
-  const t = e.touches[0];
+  const t = e.touches;
   const dx = t.clientX - dragStartX;
   const dy = t.clientY - dragStartY;
   
@@ -493,22 +486,19 @@ document.addEventListener('touchend', () => {
 });
 
 /* ══════════════════════════════════════════
-   BOUTON RECENTRER
+   BOUTON RECENTRER (Interpolation cible)
 ══════════════════════════════════════════ */
 document.getElementById('btn-reset').addEventListener('click', () => {
   const vw = window.innerWidth, vh = window.innerHeight;
-  // Centrer sur la zone centrale de la toile
-  camX = (vw - CANVAS_W) / 2;
-  camY = (vh - CANVAS_H) / 2;
-  velX = 0; velY = 0;
-  const c = document.getElementById('canvas');
-  c.style.transition = 'transform .8s cubic-bezier(0.22,1,0.36,1)';
-  applyTransform();
-  setTimeout(() => c.style.transition = 'none', 900);
+  // Au lieu de téléporter le canvas brutalement, on définit la cible au centre
+  targetX = (vw - CANVAS_W) / 2;
+  targetY = (vh - CANVAS_H) / 2;
+  velX = 0; 
+  velY = 0;
 });
 
 /* ══════════════════════════════════════════
-   MINIMAP
+   MINIMAP ORIGINALE PRESERVÉE
 ══════════════════════════════════════════ */
 function updateMinimap() {
   if (!CANVAS_W) return;
@@ -516,22 +506,26 @@ function updateMinimap() {
   const mmW = mm.offsetWidth, mmH = mm.offsetHeight;
   const scaleX = mmW / CANVAS_W, scaleY = mmH / CANVAS_H;
   const vw = window.innerWidth, vh = window.innerHeight;
-  // Position du viewport sur la minimap
+  
   const vx = (-camX) * scaleX;
   const vy = (-camY) * scaleY;
   const vw2 = vw * scaleX;
   const vh2 = vh * scaleY;
+  
   const v = document.getElementById('mm-view');
-  v.style.left   = Math.max(0, vx) + 'px';
-  v.style.top    = Math.max(0, vy) + 'px';
-  v.style.width  = Math.min(mmW, vw2) + 'px';
-  v.style.height = Math.min(mmH, vh2) + 'px';
+  if (v) {
+    v.style.left   = Math.max(0, vx) + 'px';
+    v.style.top    = Math.max(0, vy) + 'px';
+    v.style.width  = Math.min(mmW, vw2) + 'px';
+    v.style.height = Math.min(mmH, vh2) + 'px';
+  }
 }
 
 function buildMinimap() {
   const mm = document.getElementById('minimap');
   const mmW = mm.offsetWidth, mmH = mm.offsetHeight;
   const dots = document.getElementById('mm-dots');
+  if (!dots) return;
   dots.innerHTML = '';
   photos.forEach(p => {
     const d = document.createElement('div');
@@ -544,9 +538,7 @@ function buildMinimap() {
 }
 
 /* ══════════════════════════════════════════
-   PLACEMENT DES PHOTOS SUR LA TOILE
-   Priorité 1 : layout sauvegardé par l'admin (WYSIWYG)
-   Priorité 2 : layout automatique organique
+   PLACEMENT REPOUSSE SUR LA GRILLE (D'origine)
 ══════════════════════════════════════════ */
 function computeLayout(list) {
   if (!list.length) return;
@@ -554,7 +546,6 @@ function computeLayout(list) {
   const hasLayout = list.every(p => p.layout);
 
   if (hasLayout) {
-    // Utiliser exactement le layout défini dans l'admin
     list.forEach(p => {
       p._x = p.layout.x;
       p._y = p.layout.y;
@@ -562,7 +553,6 @@ function computeLayout(list) {
       p._h = p.layout.h;
     });
   } else {
-    // Fallback : layout automatique organique
     const VW = window.innerWidth, VH = window.innerHeight;
     const COLS = Math.ceil(Math.sqrt(list.length * 1.6));
     const ROWS = Math.ceil(list.length / COLS);
@@ -570,10 +560,10 @@ function computeLayout(list) {
     const GAP_X  = Math.round(VW * 0.06), GAP_Y  = Math.round(VH * 0.12);
     const BASE   = { land: Math.round(VW * 0.38), port: Math.round(VW * 0.22), sq: Math.round(VW * 0.28) };
     const rowOffsets = Array.from({ length: ROWS }, (_, i) => {
-      const base = (i % 3 === 1) ? CELL_W * 0.5 : (i % 3 === 2) ? CELL_W * 0.25 : 0;
-      return base;
+      return (i % 3 === 1) ? CELL_W * 0.5 : (i % 3 === 2) ? CELL_W * 0.25 : 0;
     });
     const seed = (x => () => { x = Math.sin(x+1)*43758.5453; return x - Math.floor(x); })(42);
+    
     list.forEach((p, idx) => {
       const col = idx % COLS, row = Math.floor(idx / COLS);
       const bw  = BASE[p.orient] || BASE.sq;
@@ -585,15 +575,12 @@ function computeLayout(list) {
     });
   }
 
-  // Bounding box
   CANVAS_W = Math.max(...list.map(p => p._x + p._w)) + 200;
   CANVAS_H = Math.max(...list.map(p => p._y + p._h)) + 200;
 }
 
 /* ══════════════════════════════════════════
-   COULEUR DOMINANTE D'UNE IMAGE
-   Échantillonnage Canvas 10×10 → moyenne RGB
-   → couleur "ambiant" pour le halo de fond
+   EXTRACTION COULEUR DOMINANTE (D'origine)
 ══════════════════════════════════════════ */
 function getDominantColor(img) {
   try {
@@ -604,7 +591,6 @@ function getDominantColor(img) {
     const d = ctx.getImageData(0, 0, 10, 10).data;
     let r = 0, g = 0, b = 0, count = 0;
     for (let i = 0; i < d.length; i += 4) {
-      // Ignorer pixels trop sombres ou trop blancs (fond neutre)
       const lum = (d[i] + d[i+1] + d[i+2]) / 3;
       if (lum < 20 || lum > 235) continue;
       r += d[i]; g += d[i+1]; b += d[i+2]; count++;
@@ -613,7 +599,6 @@ function getDominantColor(img) {
     r = Math.round(r / count);
     g = Math.round(g / count);
     b = Math.round(b / count);
-    // Saturation légèrement boostée pour un rendu plus vivant
     const avg = (r + g + b) / 3;
     const boost = 1.4;
     r = Math.min(255, Math.round(avg + (r - avg) * boost));
@@ -624,19 +609,16 @@ function getDominantColor(img) {
 }
 
 /* ══════════════════════════════════════════
-   RENDU DES CARTES
-   - Photos droites (0° de rotation)
-   - Halo ambiant coloré derrière chaque photo
-   - Centrage intelligent sans espaces vides
+   INJECTION DU CONTENU ET HALOS DE FOND
 ══════════════════════════════════════════ */
 function renderCanvas() {
   const canvas = document.getElementById('canvas');
+  if (!canvas) return;
   canvas.innerHTML = '';
   canvas.style.width  = CANVAS_W + 'px';
   canvas.style.height = CANVAS_H + 'px';
 
   photos.forEach((photo, idx) => {
-    // ── Halo ambiant (div derrière la photo) ──
     const halo = document.createElement('div');
     halo.className = 'card-halo';
     halo.style.cssText = `
@@ -649,13 +631,12 @@ function renderCanvas() {
       background:radial-gradient(ellipse at center, rgba(180,160,140,0.22) 0%, transparent 70%);
       pointer-events:none;
       z-index:0;
-      filter:blur(40px);
+      filter:blur(30px);
       transition:opacity 1.2s;
       opacity:0;
     `;
     canvas.appendChild(halo);
 
-    // ── Carte photo ──
     const card = document.createElement('div');
     card.className = 'card';
     card.style.left   = photo._x + 'px';
@@ -677,7 +658,6 @@ function renderCanvas() {
     img.style.width  = photo._w + 'px';
     img.style.height = photo._h + 'px';
 
-    // Dès que l'image charge → extraire couleur dominante → peindre le halo
     img.addEventListener('load', () => {
       const color = getDominantColor(img);
       if (color) {
@@ -704,32 +684,37 @@ function renderCanvas() {
     canvas.appendChild(card);
   });
 
-  // ── Centrage : démarrer sur les premières photos, pas dans le vide ──
+  // Centrage initial de démarrage sur les coordonnées réelles des images
   const vw = window.innerWidth, vh = window.innerHeight;
   const placed = photos.filter(p => p._x !== undefined);
   if (placed.length) {
-    // Centre de masse des photos → on centre la vue dessus
-    const minX = Math.min(...placed.map(p => p._x));
-    const minY = Math.min(...placed.map(p => p._y));
-    // On commence en haut-gauche des photos avec une petite marge
-    camX = -minX + Math.round(vw * 0.08);
-    camY = -minY + Math.round(vh * 0.10);
+    const startX = Math.min(...placed.map(p => p._x));
+    const startY = Math.min(...placed.map(p => p._y));
+    targetX = -startX + Math.round(vw * 0.08);
+    targetY = -startY + Math.round(vh * 0.10);
   } else {
-    camX = 80; camY = 80;
+    targetX = 80; 
+    targetY = 80;
   }
-  clampCam();
+  
+  // Alignement immédiat sans transition mécanique au chargement
+  camX = targetX;
+  camY = targetY;
+  
   applyTransform();
   buildMinimap();
 
   setTimeout(() => {
-    document.getElementById('hud').classList.add('show');
-    document.getElementById('minimap').classList.add('show');
-    setTimeout(() => document.getElementById('hud').classList.remove('show'), 4000);
+    const hud = document.getElementById('hud');
+    const minimap = document.getElementById('minimap');
+    if(hud) hud.classList.add('show');
+    if(minimap) minimap.classList.add('show');
+    setTimeout(() => { if(hud) hud.classList.remove('show'); }, 4000);
   }, 2500);
 }
 
 /* ══════════════════════════════════════════
-   LIGHTBOX
+   LIGHTBOX COMPLÈTE AVEC NAVIGATION
 ══════════════════════════════════════════ */
 const LB = document.getElementById('lb');
 const LB_IMG = document.getElementById('lb-img');
@@ -739,31 +724,37 @@ const LB_CTR = document.getElementById('lb-ctr');
 function openLb(i) {
   lbIdx = i;
   const p = photos[i];
+  if (!p) return;
   LB_IMG.src = p.url;
   LB_TITLE.textContent = p.name;
   LB_CTR.textContent = `${i+1} / ${photos.length}`;
   LB.classList.add('open');
 }
+
 function closeLb() {
   LB.classList.remove('open');
   setTimeout(() => { LB_IMG.src = ''; }, 500);
 }
+
 function navLb(d) {
   lbIdx = (lbIdx + d + photos.length) % photos.length;
   LB_IMG.style.cssText = 'opacity:0;transform:scale(.96)';
   setTimeout(() => {
     const p = photos[lbIdx];
+    if (!p) return;
     LB_IMG.src = p.url;
     LB_TITLE.textContent = p.name;
     LB_CTR.textContent = `${lbIdx+1} / ${photos.length}`;
     LB_IMG.style.cssText = 'opacity:1;transform:scale(1)';
   }, 180);
 }
-LB_IMG.style.transition = 'opacity .2s,transform .2s';
+
+if (LB_IMG) LB_IMG.style.transition = 'opacity .2s,transform .2s';
 document.getElementById('lb-close').addEventListener('click', closeLb);
 document.getElementById('lb-prev').addEventListener('click', () => navLb(-1));
 document.getElementById('lb-next').addEventListener('click', () => navLb(1));
 LB.addEventListener('click', e => { if (e.target === LB) closeLb(); });
+
 document.addEventListener('keydown', e => {
   if (!LB.classList.contains('open')) return;
   if (e.key === 'Escape') closeLb();
@@ -771,9 +762,8 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') navLb(1);
 });
 
-// Flèches clavier pour naviguer dans la toile
+// Contrôles flèches clavier hors lightbox
 document.addEventListener('keydown', e => {
-  const LB = document.getElementById('lb');
   if (LB.classList.contains('open')) return;
   const STEP = 250;
   if (e.key === 'ArrowLeft')  { targetX += STEP; }
@@ -783,7 +773,7 @@ document.addEventListener('keydown', e => {
 });
 
 /* ══════════════════════════════════════════
-   RESIZE
+   RESIZE DÉBOUNCÉ
 ══════════════════════════════════════════ */
 let resizeTimer;
 window.addEventListener('resize', () => {
@@ -797,7 +787,7 @@ window.addEventListener('resize', () => {
 });
 
 /* ══════════════════════════════════════════
-   INIT
+   INITIALISATION
 ══════════════════════════════════════════ */
 async function init() {
   try {
@@ -805,18 +795,25 @@ async function init() {
     if (r.ok) photos = (await r.json()).sort((a, b) => a.order - b.order);
   } catch(e) { photos = []; }
 
-  document.getElementById('nav-count').textContent =
-    photos.length ? photos.length + ' œuvres' : '';
+  const countEl = document.getElementById('nav-count');
+  if (countEl) countEl.textContent = photos.length ? photos.length + ' œuvres' : '';
 
   if (!photos.length) {
-    document.getElementById('empty').classList.add('show');
-    setTimeout(() => document.getElementById('intro').classList.add('gone'), 600);
+    const emptyEl = document.getElementById('empty');
+    if (emptyEl) emptyEl.classList.add('show');
+    setTimeout(() => {
+      const introEl = document.getElementById('intro');
+      if (introEl) introEl.classList.add('gone');
+    }, 600);
     return;
   }
 
   computeLayout(photos);
   renderCanvas();
-  setTimeout(() => document.getElementById('intro').classList.add('gone'), 2200);
+  setTimeout(() => {
+    const introEl = document.getElementById('intro');
+    if (introEl) introEl.classList.add('gone');
+  }, 2200);
 }
 
 init();
